@@ -6,7 +6,15 @@
       "Bash(curl http://localhost:5173 2>&1 | head -5 || echo \"Frontend not running\")",
       "Bash(cd \"A:\\\\LandingPagesUkValley\\\\SalesFunnelDashboard\\\\client\" && npm run build 2>&1 | head -50)",
       "Bash(curl -s http://localhost:5000/api/health && echo \"\" && curl -s http://localhost:5173 | head -3)",
-      "Bash(curl -s http://localhost:5000/api/health)"
+      "Bash(curl -s http://localhost:5000/api/health)",
+      "Bash(cd \"A:/LandingPagesUkValley/SalesFunnelDashboard/server\" && npm install 2>&1)",
+      "Bash(cd \"A:/LandingPagesUkValley/SalesFunnelDashboard/client\" && npm install 2>&1)",
+      "Bash(cd \"A:/LandingPagesUkValley/SalesFunnelDashboard/server\" && npm install socket.io cloudinary multer-storage-cloudinary --save 2>&1)",
+      "Bash(cd \"A:/LandingPagesUkValley/SalesFunnelDashboard/server\" && timeout 10 npm run dev 2>&1 || true)",
+      "Bash(netstat -ano | findstr :5000 | findstr LISTENING)",
+      "Bash(taskkill /F /PID 22684 2>&1 || true)",
+      "Bash(taskkill //F //PID 22684 2>&1 || true)",
+      "Bash(cd \"A:/LandingPagesUkValley/SalesFunnelDashboard/server\" && timeout 15 npm run dev 2>&1 || true)"
     ]
   }
 }

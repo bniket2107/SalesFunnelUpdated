@@ -19,6 +19,11 @@ const stageSchema = new mongoose.Schema({
 }, { _id: false });
 
 const projectSchema = new mongoose.Schema({
+  projectName: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Project name cannot exceed 100 characters']
+  },
   customerName: {
     type: String,
     required: [true, 'Customer name is required'],
@@ -43,6 +48,66 @@ const projectSchema = new mongoose.Schema({
     lowercase: true,
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email']
+  },
+  industry: {
+    type: String,
+    trim: true
+  },
+  description: {
+    type: String,
+    trim: true,
+    maxlength: [2000, 'Description cannot exceed 2000 characters']
+  },
+  budget: {
+    type: Number,
+    min: 0
+  },
+  timeline: {
+    startDate: {
+      type: Date
+    },
+    endDate: {
+      type: Date
+    }
+  },
+  brandAssets: [{
+    fileName: {
+      type: String,
+      required: true
+    },
+    filePath: {
+      type: String,
+      required: true
+    },
+    publicId: {
+      type: String
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  assignedTeam: {
+    performanceMarketer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    uiUxDesigner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    graphicDesigner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    developer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    tester: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
   },
   currentStage: {
     type: Number,
@@ -86,6 +151,10 @@ const projectSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  isActive: {
+    type: Boolean,
+    default: false
   },
   status: {
     type: String,

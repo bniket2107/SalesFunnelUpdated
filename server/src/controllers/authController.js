@@ -106,7 +106,10 @@ exports.login = async (req, res, next) => {
         _id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        specialization: user.specialization,
+        availability: user.availability,
+        avatar: user.avatar
       },
       token
     });
@@ -136,7 +139,7 @@ exports.getMe = async (req, res, next) => {
 // @access  Private
 exports.updateDetails = async (req, res, next) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, specialization, availability } = req.body;
 
     const fieldsToUpdate = {};
     if (name) fieldsToUpdate.name = name;
@@ -151,6 +154,8 @@ exports.updateDetails = async (req, res, next) => {
       }
       fieldsToUpdate.email = email;
     }
+    if (specialization) fieldsToUpdate.specialization = specialization;
+    if (availability) fieldsToUpdate.availability = availability;
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
@@ -208,6 +213,201 @@ exports.logout = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Successfully logged out'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get all team members
+// @route   GET /api/auth/team
+// @access  Private (Admin only)
+exports.getTeamMembers = async (req, res, next) => {
+  try {
+    const { role, availability, search } = req.query;
+
+    // Build query
+    let query = {};
+
+    // Filter by role
+    if (role) {
+      query.role = role;
+    }
+
+    // Filter by availability
+    if (availability) {
+      query.availability = availability;
+    }
+
+    // Search by name or email
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const users = await User.find(query)
+      .select('-password')
+      .sort({ name: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      data: users
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Create new team member
+// @route   POST /api/auth/create-user
+// @access  Private (Admin only)
+exports.createTeamMember = async (req, res, next) => {
+  try {
+    const { name, email, password, role, specialization } = req.body;
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User with this email already exists'
+      });
+    }
+
+    // Create user
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role: role || 'performance_marketer',
+      specialization
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        specialization: user.specialization,
+        availability: user.availability
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update team member
+// @route   PUT /api/auth/users/:id
+// @access  Private (Admin only)
+exports.updateTeamMember = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, email, role, specialization, availability, isActive } = req.body;
+
+    const fieldsToUpdate = {};
+    if (name) fieldsToUpdate.name = name;
+    if (email) {
+      // Check if email is already taken
+      const existingUser = await User.findOne({ email, _id: { $ne: id } });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email is already taken'
+        });
+      }
+      fieldsToUpdate.email = email;
+    }
+    if (role) fieldsToUpdate.role = role;
+    if (specialization !== undefined) fieldsToUpdate.specialization = specialization;
+    if (availability) fieldsToUpdate.availability = availability;
+    if (isActive !== undefined) fieldsToUpdate.isActive = isActive;
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      fieldsToUpdate,
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete/Deactivate team member
+// @route   DELETE /api/auth/users/:id
+// @access  Private (Admin only)
+exports.deleteTeamMember = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Prevent admin from deleting themselves
+    if (id === req.user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete your own account'
+      });
+    }
+
+    // Soft delete - just deactivate
+    user.isActive = false;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User deactivated successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get team members by role
+// @route   GET /api/auth/team/by-role
+// @access  Private
+exports.getTeamByRole = async (req, res, next) => {
+  try {
+    const roles = ['performance_marketer', 'ui_ux_designer', 'graphic_designer', 'developer', 'tester'];
+
+    const teamByRole = {};
+
+    for (const role of roles) {
+      const members = await User.find({
+        role,
+        isActive: true
+      }).select('name email specialization availability avatar');
+
+      teamByRole[role] = members;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: teamByRole
     });
   } catch (error) {
     next(error);

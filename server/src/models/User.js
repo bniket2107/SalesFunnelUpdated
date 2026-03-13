@@ -24,8 +24,20 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['performance_marketer', 'designer', 'content_writer', 'admin', 'manager'],
+    enum: ['admin', 'performance_marketer', 'ui_ux_designer', 'graphic_designer', 'developer', 'tester'],
     default: 'performance_marketer'
+  },
+  specialization: {
+    type: String,
+    trim: true
+  },
+  availability: {
+    type: String,
+    enum: ['available', 'busy', 'offline'],
+    default: 'available'
+  },
+  avatar: {
+    type: String
   },
   isActive: {
     type: Boolean,

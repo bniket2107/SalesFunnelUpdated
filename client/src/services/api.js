@@ -52,6 +52,12 @@ export const authService = {
   updateDetails: (data) => api.put('/auth/updatedetails', data),
   updatePassword: (data) => api.put('/auth/updatepassword', data),
   logout: () => api.post('/auth/logout'),
+  // Team management
+  getTeamMembers: (params) => api.get('/auth/team', { params }),
+  getTeamByRole: () => api.get('/auth/team/by-role'),
+  createTeamMember: (data) => api.post('/auth/create-user', data),
+  updateTeamMember: (id, data) => api.put(`/auth/users/${id}`, data),
+  deleteTeamMember: (id) => api.delete(`/auth/users/${id}`),
 };
 
 // Project service
@@ -63,6 +69,22 @@ export const projectService = {
   deleteProject: (id) => api.delete(`/projects/${id}`),
   getProgress: (id) => api.get(`/projects/${id}/progress`),
   getDashboardStats: () => api.get('/projects/dashboard/stats'),
+  // New endpoints
+  assignTeam: (id, data) => api.put(`/projects/${id}/assign-team`, data),
+  toggleActivation: (id, isActive) => api.put(`/projects/${id}/activate`, { isActive }),
+  uploadAssets: (id, formData) => api.post(`/projects/${id}/assets`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getAssignedProjects: (params) => api.get('/projects/assigned', { params }),
+};
+
+// Notification service
+export const notificationService = {
+  getNotifications: (params) => api.get('/notifications', { params }),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/read-all'),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  deleteNotification: (id) => api.delete(`/notifications/${id}`),
 };
 
 // Market Research service

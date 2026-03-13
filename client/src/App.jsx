@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { SocketProvider } from '@/context/SocketContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 import { ProjectProvider } from '@/context/ProjectContext';
 import { Layout } from '@/components/layout';
 
@@ -25,6 +27,9 @@ import {
 // Tasks
 import { TasksPage } from '@/pages/tasks';
 
+// Team
+import { TeamManagementPage } from '@/pages/team';
+
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -39,6 +44,29 @@ function ProtectedRoute({ children }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+// Admin Route wrapper
+function AdminRoute({ children }) {
+  const { isAuthenticated, loading, user } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user?.role !== 'admin') {
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -88,9 +116,13 @@ function AppRoutes() {
       <Route
         element={
           <ProtectedRoute>
-            <ProjectProvider>
-              <Layout />
-            </ProjectProvider>
+            <SocketProvider>
+              <NotificationProvider>
+                <ProjectProvider>
+                  <Layout />
+                </ProjectProvider>
+              </NotificationProvider>
+            </SocketProvider>
           </ProtectedRoute>
         }
       >
@@ -119,6 +151,16 @@ function AppRoutes() {
 
         {/* Tasks */}
         <Route path="/tasks" element={<TasksPage />} />
+
+        {/* Team Management (Admin only) */}
+        <Route
+          path="/team"
+          element={
+            <AdminRoute>
+              <TeamManagementPage />
+            </AdminRoute>
+          }
+        />
 
         {/* Reports (placeholder) */}
         <Route

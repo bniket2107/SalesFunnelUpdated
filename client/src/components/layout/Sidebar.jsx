@@ -19,9 +19,10 @@ import {
   Bell,
   MessageSquare,
   CheckSquare,
+  Users,
 } from 'lucide-react';
 
-const navigation = [
+const baseNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Projects', href: '/projects', icon: FolderKanban },
@@ -35,9 +36,19 @@ const navigation = [
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
+// Admin-only navigation items
+const adminNavigation = [
+  { name: 'Team Management', href: '/team', icon: Users },
+];
+
 export default function Sidebar({ collapsed, setCollapsed }) {
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  // Combine navigation based on role
+  const navigation = user?.role === 'admin'
+    ? [...baseNavigation.slice(0, 3), ...adminNavigation, ...baseNavigation.slice(3)]
+    : baseNavigation;
 
   return (
     <aside

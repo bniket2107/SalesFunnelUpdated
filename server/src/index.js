@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 // Import database connection
@@ -16,6 +18,10 @@ const trafficStrategyRoutes = require('./routes/trafficStrategy');
 const landingPageRoutes = require('./routes/landingPages');
 const creativeRoutes = require('./routes/creatives');
 const taskRoutes = require('./routes/tasks');
+const notificationRoutes = require('./routes/notifications');
+
+// Import controllers for Socket.io integration
+const { setIO, createNotification } = require('./controllers/projectController');
 
 // Create Express app
 const app = express();
@@ -25,7 +31,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: '*', // Allow all origins in development
+  origin: process.env.CLIENT_URL || '*',
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -53,6 +59,7 @@ app.use('/api/traffic-strategy', trafficStrategyRoutes);
 app.use('/api/landing-pages', landingPageRoutes);
 app.use('/api/creatives', creativeRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 handler
 app.use((req, res, next) => {
@@ -118,15 +125,53 @@ const server = app.listen(PORT, () => {
   ║                                                       ║
   ║   Server running on port ${PORT}                        ║
   ║   Environment: ${process.env.NODE_ENV || 'development'}                        ║
+  ║   Socket.io enabled                                   ║
   ║                                                       ║
   ╚═══════════════════════════════════════════════════════╝
   `);
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-  console.log(`Error: ${err.message}`);
-  server.close(() => process.exit(1));
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || '*',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
 });
 
-module.exports = app;
+// Pass io to project controller for notifications
+setIO(io);
+
+// Socket.io authentication middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
+
+  if (!token) {
+    return next(new Error('Authentication error: No token provided'));
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.id;
+    next();
+  } catch (error) {
+    return next(new Error('Authentication error: Invalid token'));
+  }
+});
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.userId}`);
+
+  // Join user's personal room for notifications
+  socket.join(socket.userId);
+
+  // Handle disconnection
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.userId}`);
+  });
+});
+
+// Export createNotification for use in other controllers
+module.exports = { app, io, createNotification };
