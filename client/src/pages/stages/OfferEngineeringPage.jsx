@@ -4,10 +4,113 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { toast } from 'sonner';
 import { Card, CardBody, CardHeader, Button, Input, Textarea, Spinner } from '@/components/ui';
 import { StageProgressTracker } from '@/components/workflow';
-import { ArrowLeft, Plus, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Plus, X, CheckCircle, Lightbulb } from 'lucide-react';
 
 // STATIC DATA MODE - Set to true for development, false for API calls
 const USE_STATIC_DATA = false;
+
+// Predefined suggestions for quick selection
+const VALUE_SUGGESTIONS = {
+  functional: [
+    'Automates repetitive marketing tasks saving 10+ hours per week',
+    'Provides real-time analytics and performance tracking',
+    'Integrates with existing tools (CRM, email, ads platforms)',
+    'Generates qualified leads on autopilot',
+    'Streamlines customer communication workflows',
+    'Creates professional landing pages in minutes',
+    'Manages multiple marketing channels from one dashboard',
+    'Tracks ROI and campaign performance automatically',
+    'Simplifies A/B testing and optimization',
+    'Provides templates for emails, ads, and landing pages',
+  ],
+  emotional: [
+    'Feel confident and in control of your marketing efforts',
+    'Experience peace of mind knowing everything is automated',
+    'Feel proud of your professional marketing presence',
+    'Gain confidence in your ability to scale your business',
+    'Feel empowered to make data-driven decisions',
+    'Experience relief from marketing overwhelm',
+    'Feel successful as you see real results',
+    'Gain certainty about your marketing strategy',
+    'Feel accomplished as you hit your goals',
+    'Experience freedom from constant marketing worries',
+  ],
+  social: [
+    'Join a community of successful marketers and entrepreneurs',
+    'Gain recognition as a thought leader in your industry',
+    'Share your success story with like-minded peers',
+    'Build credibility with professional marketing assets',
+    'Network with other successful business owners',
+    'Get featured in our customer success stories',
+    'Receive certification that boosts your professional profile',
+    'Connect with industry experts and mentors',
+    'Build authority in your niche with proven results',
+    'Showcase your achievements to clients and partners',
+  ],
+  economic: [
+    'Average ROI of 300% within the first 90 days',
+    'Reduce marketing costs by 40% while increasing results',
+    'Save $50,000+ annually on marketing tools and staff',
+    'Generate 3x more leads with the same budget',
+    'Increase conversion rates by 50% or more',
+    'Cut customer acquisition cost in half',
+    'Achieve break-even within 30 days',
+    'Turn marketing from cost center to profit center',
+    'Predictable revenue growth month over month',
+    'Scale revenue without scaling costs proportionally',
+  ],
+  experiential: [
+    'Seamless onboarding with dedicated support team',
+    'Personalized setup call to configure your account',
+    'Step-by-step video tutorials and documentation',
+    'Weekly live training sessions and Q&A calls',
+    '1-on-1 strategy sessions with marketing experts',
+    'VIP concierge support for premium members',
+    'Annual in-person mastermind event access',
+    'Private Slack/Discord community access',
+    'Monthly strategy review calls',
+    'Priority support with 2-hour response time',
+  ],
+};
+
+const BONUS_SUGGESTIONS = [
+  { title: 'Marketing Templates Pack', description: '50+ proven templates for emails, ads, and landing pages', value: 297 },
+  { title: 'Private Community Access', description: 'Lifetime access to our exclusive marketing community', value: 997 },
+  { title: 'Weekly Live Q&A Sessions', description: 'Join our weekly live calls for personalized guidance', value: 497 },
+  { title: 'ROI Calculator Spreadsheet', description: 'Custom spreadsheet to track and calculate your marketing ROI', value: 97 },
+  { title: 'Email Sequence Templates', description: '10 pre-written email sequences for different funnels', value: 197 },
+  { title: 'Ad Copy Swipe File', description: '100+ high-converting ad copy examples', value: 147 },
+  { title: 'Landing Page Templates', description: '20 high-converting landing page templates', value: 297 },
+  { title: 'Customer Avatar Template', description: 'Detailed customer avatar worksheet and template', value: 47 },
+  { title: 'Competitor Analysis Template', description: 'Framework for analyzing and outperforming competitors', value: 97 },
+  { title: 'Launch Checklist', description: 'Complete step-by-step launch checklist and timeline', value: 67 },
+];
+
+const GUARANTEE_SUGGESTIONS = [
+  '30-day money-back guarantee - no questions asked',
+  '60-day results guarantee - get results or your money back',
+  '100% satisfaction guarantee',
+  'Risk-free trial for 14 days',
+  'Double your leads in 90 days or we work for free',
+  'Lifetime satisfaction guarantee',
+  '90-day no-risk trial',
+  'We don\'t get paid until you see results',
+  'Full refund if not satisfied within 60 days',
+  'Performance-based guarantee with milestones',
+];
+
+const URGENCY_SUGGESTIONS = [
+  'Limited time offer - expires in 48 hours',
+  'Only 50 spots available at this price',
+  'Price increases by $500 after this week',
+  'Bonus expires midnight tonight',
+  'Early bird pricing ends soon',
+  'Limited bonus availability for first 100 buyers',
+  'Special launch pricing - price goes up Friday',
+  'Fast-action bonus for first 50 orders',
+  'Inventory limited - secure your spot now',
+  'Offer expires when timer hits zero',
+];
 
 // Mock project data with market research completed
 const STATIC_PROJECT = {
@@ -191,6 +294,10 @@ export default function OfferEngineeringPage() {
   const addItem = (field, value, setter) => {
     if (!value.trim()) return;
     const current = watch(field) || [];
+    if (current.includes(value.trim())) {
+      toast.info('This item is already added');
+      return;
+    }
     setValue(field, [...current, value.trim()]);
     setter('');
   };
@@ -200,6 +307,29 @@ export default function OfferEngineeringPage() {
     setValue(field, current.filter((_, i) => i !== index));
   };
 
+  const addSuggestion = (field, suggestion) => {
+    const current = watch(field) || [];
+    if (current.includes(suggestion)) {
+      toast.info('This item is already added');
+      return;
+    }
+    setValue(field, [...current, suggestion]);
+  };
+
+  const insertValueSuggestion = (field, suggestion) => {
+    setValue(field, suggestion);
+  };
+
+  const addBonusSuggestion = (bonus) => {
+    const currentBonuses = watch('bonuses') || [];
+    const exists = currentBonuses.some(b => b.title === bonus.title);
+    if (exists) {
+      toast.info('This bonus is already added');
+      return;
+    }
+    appendBonus(bonus);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -207,14 +337,6 @@ export default function OfferEngineeringPage() {
       </div>
     );
   }
-
-  const valueFields = [
-    { key: 'functionalValue', label: 'Functional Value', placeholder: 'What does your product/service actually do?' },
-    { key: 'emotionalValue', label: 'Emotional Value', placeholder: 'How does your customer feel after using it?' },
-    { key: 'socialValue', label: 'Social/Status Value', placeholder: 'How does it improve their social standing?' },
-    { key: 'economicValue', label: 'Economic Value', placeholder: 'What financial benefits do they receive?' },
-    { key: 'experientialValue', label: 'Experiential Value', placeholder: 'What unique experience do they get?' },
-  ];
 
   // Calculate progress
   const calculateProgress = () => {
@@ -276,19 +398,146 @@ export default function OfferEngineeringPage() {
             <h2 className="text-lg font-semibold text-gray-900">Value Proposition</h2>
             <p className="text-sm text-gray-500">Define the core value you provide to customers</p>
           </CardHeader>
-          <CardBody className="space-y-4">
-            {valueFields.map((field) => (
-              <div key={field.key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {field.label}
-                </label>
-                <Textarea
-                  placeholder={field.placeholder}
-                  rows={3}
-                  {...register(field.key)}
-                />
+          <CardBody className="space-y-6">
+            {/* Functional Value */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Functional Value
+              </label>
+              <p className="text-xs text-gray-500 mb-2">What does your product/service actually do?</p>
+              <Textarea
+                placeholder="Describe the functional benefits..."
+                rows={2}
+                {...register('functionalValue')}
+              />
+              <div className="flex flex-wrap gap-1 mt-2">
+                <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                  <Lightbulb className="w-3 h-3" /> Suggestions:
+                </span>
+                {VALUE_SUGGESTIONS.functional.slice(0, 6).map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => insertValueSuggestion('functionalValue', suggestion)}
+                    className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-purple-50 hover:text-purple-700 rounded transition-colors"
+                  >
+                    {suggestion.substring(0, 30)}...
+                  </button>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Emotional Value */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Emotional Value
+              </label>
+              <p className="text-xs text-gray-500 mb-2">How does your customer feel after using it?</p>
+              <Textarea
+                placeholder="Describe the emotional benefits..."
+                rows={2}
+                {...register('emotionalValue')}
+              />
+              <div className="flex flex-wrap gap-1 mt-2">
+                <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                  <Lightbulb className="w-3 h-3" /> Suggestions:
+                </span>
+                {VALUE_SUGGESTIONS.emotional.slice(0, 6).map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => insertValueSuggestion('emotionalValue', suggestion)}
+                    className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-pink-50 hover:text-pink-700 rounded transition-colors"
+                  >
+                    {suggestion.substring(0, 30)}...
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Social Value */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Social/Status Value
+              </label>
+              <p className="text-xs text-gray-500 mb-2">How does it improve their social standing?</p>
+              <Textarea
+                placeholder="Describe the social benefits..."
+                rows={2}
+                {...register('socialValue')}
+              />
+              <div className="flex flex-wrap gap-1 mt-2">
+                <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                  <Lightbulb className="w-3 h-3" /> Suggestions:
+                </span>
+                {VALUE_SUGGESTIONS.social.slice(0, 6).map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => insertValueSuggestion('socialValue', suggestion)}
+                    className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-blue-50 hover:text-blue-700 rounded transition-colors"
+                  >
+                    {suggestion.substring(0, 30)}...
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Economic Value */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Economic Value
+              </label>
+              <p className="text-xs text-gray-500 mb-2">What financial benefits do they receive?</p>
+              <Textarea
+                placeholder="Describe the financial benefits..."
+                rows={2}
+                {...register('economicValue')}
+              />
+              <div className="flex flex-wrap gap-1 mt-2">
+                <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                  <Lightbulb className="w-3 h-3" /> Suggestions:
+                </span>
+                {VALUE_SUGGESTIONS.economic.slice(0, 6).map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => insertValueSuggestion('economicValue', suggestion)}
+                    className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-green-50 hover:text-green-700 rounded transition-colors"
+                  >
+                    {suggestion.substring(0, 30)}...
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Experiential Value */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Experiential Value
+              </label>
+              <p className="text-xs text-gray-500 mb-2">What unique experience do they get?</p>
+              <Textarea
+                placeholder="Describe the experiential benefits..."
+                rows={2}
+                {...register('experientialValue')}
+              />
+              <div className="flex flex-wrap gap-1 mt-2">
+                <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                  <Lightbulb className="w-3 h-3" /> Suggestions:
+                </span>
+                {VALUE_SUGGESTIONS.experiential.slice(0, 6).map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => insertValueSuggestion('experientialValue', suggestion)}
+                    className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-orange-50 hover:text-orange-700 rounded transition-colors"
+                  >
+                    {suggestion.substring(0, 30)}...
+                  </button>
+                ))}
+              </div>
+            </div>
           </CardBody>
         </Card>
 
@@ -312,8 +561,27 @@ export default function OfferEngineeringPage() {
             </div>
           </CardHeader>
           <CardBody>
+            {/* Suggestion chips */}
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-1">
+                <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                  <Lightbulb className="w-3 h-3" /> Quick add:
+                </span>
+                {BONUS_SUGGESTIONS.filter(s => !(watch('bonuses') || []).some(b => b.title === s.title)).slice(0, 6).map((bonus) => (
+                  <button
+                    key={bonus.title}
+                    type="button"
+                    onClick={() => addBonusSuggestion(bonus)}
+                    className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-indigo-50 hover:text-indigo-700 rounded transition-colors"
+                  >
+                    + {bonus.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {bonusFields.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">No bonuses added yet</p>
+              <p className="text-gray-500 text-center py-4">No bonuses added yet - click suggestions above or add custom bonus</p>
             ) : (
               <div className="space-y-4">
                 {bonusFields.map((field, index) => (
@@ -359,7 +627,7 @@ export default function OfferEngineeringPage() {
             <p className="text-sm text-gray-500">Add risk reversal guarantees</p>
           </CardHeader>
           <CardBody>
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-3">
               <Input
                 placeholder="e.g., 30-day money-back guarantee"
                 value={newGuarantee}
@@ -375,6 +643,23 @@ export default function OfferEngineeringPage() {
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+            {/* Suggestion chips */}
+            <div className="flex flex-wrap gap-1 mb-3">
+              <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                <Lightbulb className="w-3 h-3" /> Quick add:
+              </span>
+              {GUARANTEE_SUGGESTIONS.filter(s => !(watch('guarantees') || []).includes(s)).slice(0, 8).map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => addSuggestion('guarantees', suggestion)}
+                  className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-green-50 hover:text-green-700 rounded transition-colors"
+                >
+                  + {suggestion.substring(0, 25)}...
+                </button>
+              ))}
+            </div>
+            {/* Selected items */}
             <div className="space-y-2">
               {(watch('guarantees') || []).map((guarantee, index) => (
                 <div
@@ -402,7 +687,7 @@ export default function OfferEngineeringPage() {
             <p className="text-sm text-gray-500">Add scarcity and urgency elements</p>
           </CardHeader>
           <CardBody>
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-3">
               <Input
                 placeholder="e.g., Limited time offer - 48 hours only"
                 value={newUrgency}
@@ -418,6 +703,23 @@ export default function OfferEngineeringPage() {
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+            {/* Suggestion chips */}
+            <div className="flex flex-wrap gap-1 mb-3">
+              <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                <Lightbulb className="w-3 h-3" /> Quick add:
+              </span>
+              {URGENCY_SUGGESTIONS.filter(s => !(watch('urgencyTactics') || []).includes(s)).slice(0, 8).map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => addSuggestion('urgencyTactics', suggestion)}
+                  className="text-xs px-2 py-0.5 bg-gray-100 hover:bg-orange-50 hover:text-orange-700 rounded transition-colors"
+                >
+                  + {suggestion.substring(0, 25)}...
+                </button>
+              ))}
+            </div>
+            {/* Selected items */}
             <div className="space-y-2">
               {(watch('urgencyTactics') || []).map((tactic, index) => (
                 <div
