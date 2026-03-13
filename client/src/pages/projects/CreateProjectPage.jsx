@@ -67,7 +67,8 @@ export default function CreateProjectPage() {
 
       const response = await projectService.createProject(projectData);
       toast.success('Project created successfully!');
-      navigate(`/projects/${response.data._id}`);
+      // Redirect to team assignment page
+      navigate(`/projects/${response.data._id}/assign-team`);
     } catch (error) {
       toast.error(error.message || 'Failed to create project');
     } finally {

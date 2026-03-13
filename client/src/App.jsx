@@ -13,7 +13,7 @@ import { LoginPage, RegisterPage } from '@/pages/auth';
 import { DashboardPage } from '@/pages/dashboard';
 
 // Projects
-import { ProjectsListPage, CreateProjectPage, ProjectDetailPage } from '@/pages/projects';
+import { ProjectsListPage, CreateProjectPage, ProjectDetailPage, TeamAssignmentPage } from '@/pages/projects';
 
 // Stages
 import {
@@ -163,6 +163,16 @@ function AppRoutes() {
           element={
             <AdminRoute>
               <CreateProjectPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Team Assignment - Admin only */}
+        <Route
+          path="/projects/:id/assign-team"
+          element={
+            <AdminRoute>
+              <TeamAssignmentPage />
             </AdminRoute>
           }
         />

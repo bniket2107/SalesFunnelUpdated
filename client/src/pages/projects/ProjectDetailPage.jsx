@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
+import { projectService } from '@/services/api';
 import { Card, CardBody, CardHeader, Button, Badge, ProgressBar, Spinner } from '@/components/ui';
 import { StageProgressTracker } from '@/components/workflow';
 import {
@@ -14,33 +16,11 @@ import {
   Lightbulb,
   CheckCircle,
   Lock,
+  Users,
+  UserPlus,
+  Play,
 } from 'lucide-react';
 import { formatDate, getStageName, STAGE_ORDER } from '@/lib/utils';
-
-// STATIC DATA MODE - Set to true for development, false for API calls
-const USE_STATIC_DATA = false;
-
-// Mock project data
-const STATIC_PROJECT = {
-  _id: 'static-project-1',
-  customerName: 'John Smith',
-  businessName: 'Acme Corporation',
-  email: 'john@acme.com',
-  mobile: '+1-555-0123',
-  currentStage: 2,
-  overallProgress: 16,
-  stages: {
-    onboarding: { isCompleted: true, completedAt: new Date() },
-    marketResearch: { isCompleted: false, completedAt: null },
-    offerEngineering: { isCompleted: false, completedAt: null },
-    trafficStrategy: { isCompleted: false, completedAt: null },
-    landingPage: { isCompleted: false, completedAt: null },
-    creativeStrategy: { isCompleted: false, completedAt: null }
-  },
-  status: 'active',
-  createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-  updatedAt: new Date()
-};
 
 const STAGE_ICONS = {
   onboarding: CheckCircle,
@@ -69,11 +49,23 @@ const STAGE_NAMES = {
   creativeStrategy: 'Creative Strategy Execution'
 };
 
+// Role labels
+const ROLE_LABELS = {
+  performanceMarketer: 'Performance Marketer',
+  uiUxDesigner: 'UI/UX Designer',
+  graphicDesigner: 'Graphic Designer',
+  developer: 'Developer',
+  tester: 'Tester',
+};
+
 export default function ProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState(null);
+
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     fetchProject();
@@ -82,17 +74,8 @@ export default function ProjectDetailPage() {
   const fetchProject = async () => {
     try {
       setLoading(true);
-
-      if (USE_STATIC_DATA) {
-        // Use static data for development
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setProject(STATIC_PROJECT);
-      } else {
-        // Real API call
-        const { projectService } = await import('@/services/api');
-        const response = await projectService.getProject(id);
-        setProject(response.data);
-      }
+      const response = await projectService.getProject(id);
+      setProject(response.data);
     } catch (error) {
       toast.error('Failed to load project');
       navigate('/projects');
@@ -105,17 +88,21 @@ export default function ProjectDetailPage() {
     if (!window.confirm('Are you sure you want to delete this project?')) return;
 
     try {
-      if (USE_STATIC_DATA) {
-        toast.success('Project deleted successfully');
-        navigate('/projects');
-      } else {
-        const { projectService } = await import('@/services/api');
-        await projectService.deleteProject(id);
-        toast.success('Project deleted successfully');
-        navigate('/projects');
-      }
+      await projectService.deleteProject(id);
+      toast.success('Project deleted successfully');
+      navigate('/projects');
     } catch (error) {
       toast.error('Failed to delete project');
+    }
+  };
+
+  const handleActivate = async () => {
+    try {
+      await projectService.toggleActivation(id, true);
+      toast.success('Project activated successfully');
+      fetchProject();
+    } catch (error) {
+      toast.error('Failed to activate project');
     }
   };
 
@@ -164,24 +151,49 @@ export default function ProjectDetailPage() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">
-                {project.businessName}
+                {project.projectName || project.businessName}
               </h1>
               <Badge variant={project.status === 'active' ? 'success' : 'default'}>
                 {project.status}
               </Badge>
+              {project.isActive ? (
+                <Badge className="bg-green-100 text-green-700">Active</Badge>
+              ) : (
+                <Badge className="bg-gray-100 text-gray-600">Inactive</Badge>
+              )}
             </div>
             <p className="text-gray-600 mt-1">{project.customerName}</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => navigate(`/projects/${id}/edit`)}>
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
-          </Button>
-          <Button variant="danger" onClick={handleDelete}>
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete
-          </Button>
+          {isAdmin ? (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => navigate(`/projects/${id}/assign-team`)}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Assign Team
+              </Button>
+              {!project.isActive && project.assignedTeam?.performanceMarketer && (
+                <Button onClick={handleActivate}>
+                  <Play className="w-4 h-4 mr-2" />
+                  Activate
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => navigate(`/projects/${id}/edit`)}>
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+              <Button variant="danger" onClick={handleDelete}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -228,86 +240,185 @@ export default function ProjectDetailPage() {
               <label className="text-sm text-gray-500">Mobile</label>
               <p className="mt-1 font-medium text-gray-900">{project.mobile}</p>
             </div>
+            {project.industry && (
+              <div>
+                <label className="text-sm text-gray-500">Industry</label>
+                <p className="mt-1 font-medium text-gray-900">{project.industry}</p>
+              </div>
+            )}
+            {project.budget && (
+              <div>
+                <label className="text-sm text-gray-500">Budget</label>
+                <p className="mt-1 font-medium text-gray-900">${project.budget.toLocaleString()}</p>
+              </div>
+            )}
             <div>
               <label className="text-sm text-gray-500">Created</label>
               <p className="mt-1 font-medium text-gray-900">{formatDate(project.createdAt)}</p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">Last Updated</label>
-              <p className="mt-1 font-medium text-gray-900">{formatDate(project.updatedAt)}</p>
             </div>
           </div>
         </CardBody>
       </Card>
 
-      {/* Workflow Stages */}
-      <h2 className="text-lg font-semibold text-gray-900">Workflow Stages</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {stages.map((stage, index) => {
-          const Icon = STAGE_ICONS[stage.key] || CheckCircle;
-          const isAccessible = stage.isAccessible;
-          const isCompleted = stage.isCompleted;
-
-          return (
-            <Card
-              key={stage.key}
-              className={`relative overflow-hidden transition-all ${
-                isAccessible ? 'hover:shadow-md cursor-pointer' : 'opacity-60'
-              }`}
-              onClick={() => {
-                if (isAccessible) {
-                  navigate(`${STAGE_PATHS[stage.key]}?projectId=${id}`);
-                }
-              }}
-            >
-              {!isAccessible && (
-                <div className="absolute top-2 right-2">
-                  <Lock className="w-5 h-5 text-gray-400" />
-                </div>
-              )}
-              <CardBody className="p-6">
-                <div className="flex items-start gap-4">
-                  <div
-                    className={`p-3 rounded-lg ${
-                      isCompleted
-                        ? 'bg-green-100 text-green-600'
-                        : isAccessible
-                        ? 'bg-primary-100 text-primary-600'
-                        : 'bg-gray-100 text-gray-400'
-                    }`}
-                  >
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-900">{stage.name}</h3>
-                      {isCompleted && (
-                        <CheckCircle className="w-5 h-5 text-green-500" />
-                      )}
+      {/* Team Assignment - Admin View */}
+      {isAdmin && project.assignedTeam && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Assigned Team</h2>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => navigate(`/projects/${id}/assign-team`)}
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Manage Team
+              </Button>
+            </div>
+          </CardHeader>
+          <CardBody>
+            {project.assignedTeam.performanceMarketer ||
+            project.assignedTeam.uiUxDesigner ||
+            project.assignedTeam.graphicDesigner ||
+            project.assignedTeam.developer ||
+            project.assignedTeam.tester ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(project.assignedTeam).map(([role, member]) => (
+                  member && (
+                    <div key={role} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold">
+                        {member.name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{member.name}</p>
+                        <p className="text-sm text-gray-500">{ROLE_LABELS[role]}</p>
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Stage {stage.order} of 6
-                    </p>
-                    {isAccessible && !isCompleted && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="mt-3"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`${STAGE_PATHS[stage.key]}?projectId=${id}`);
-                        }}
+                  )
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Users className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+                <p className="text-gray-500">No team members assigned yet</p>
+                <Button
+                  variant="secondary"
+                  className="mt-4"
+                  onClick={() => navigate(`/projects/${id}/assign-team`)}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Assign Team
+                </Button>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Workflow Stages - Only for Non-Admin */}
+      {!isAdmin && (
+        <>
+          <h2 className="text-lg font-semibold text-gray-900">Workflow Stages</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {stages.slice(1).map((stage, index) => {
+              const Icon = STAGE_ICONS[stage.key] || CheckCircle;
+              const isAccessible = stage.isAccessible;
+              const isCompleted = stage.isCompleted;
+
+              return (
+                <Card
+                  key={stage.key}
+                  className={`relative overflow-hidden transition-all ${
+                    isAccessible ? 'hover:shadow-md cursor-pointer' : 'opacity-60'
+                  }`}
+                  onClick={() => {
+                    if (isAccessible) {
+                      navigate(`${STAGE_PATHS[stage.key]}?projectId=${id}`);
+                    }
+                  }}
+                >
+                  {!isAccessible && (
+                    <div className="absolute top-2 right-2">
+                      <Lock className="w-5 h-5 text-gray-400" />
+                    </div>
+                  )}
+                  <CardBody className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={`p-3 rounded-lg ${
+                          isCompleted
+                            ? 'bg-green-100 text-green-600'
+                            : isAccessible
+                            ? 'bg-primary-100 text-primary-600'
+                            : 'bg-gray-100 text-gray-400'
+                        }`}
                       >
-                        {index === 0 ? 'Start' : 'Continue'}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-          );
-        })}
-      </div>
+                        <Icon className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-gray-900">{stage.name}</h3>
+                          {isCompleted && (
+                            <CheckCircle className="w-5 h-5 text-green-500" />
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Stage {stage.order} of 6
+                        </p>
+                        {isAccessible && !isCompleted && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="mt-3"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`${STAGE_PATHS[stage.key]}?projectId=${id}`);
+                            }}
+                          >
+                            Continue
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Admin Message */}
+      {isAdmin && (
+        <Card>
+          <CardBody className="p-6 text-center">
+            <Users className="w-12 h-12 mx-auto text-primary-500 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Team Workflow Management
+            </h3>
+            <p className="text-gray-600 mb-4">
+              As an admin, you manage customer onboarding and team assignments.
+              Strategy stages (Market Research, Offer Engineering, etc.) are handled by your team.
+            </p>
+            <div className="flex justify-center gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => navigate(`/projects/${id}/assign-team`)}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Manage Team
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => navigate('/team')}
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                View All Team Members
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+      )}
     </div>
   );
 }
