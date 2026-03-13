@@ -11,7 +11,8 @@ const {
   createTeamMember,
   updateTeamMember,
   deleteTeamMember,
-  getTeamByRole
+  getTeamByRole,
+  debugTestDb
 } = require('../controllers/authController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -31,5 +32,8 @@ router.get('/team/by-role', protect, getTeamByRole);
 router.post('/create-user', protect, authorize('admin'), createTeamMember);
 router.put('/users/:id', protect, authorize('admin'), updateTeamMember);
 router.delete('/users/:id', protect, authorize('admin'), deleteTeamMember);
+
+// Debug routes (Admin only - remove in production)
+router.get('/debug/test-db', protect, authorize('admin'), debugTestDb);
 
 module.exports = router;

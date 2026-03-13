@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { authService } from '@/services/api';
+import { authService, projectService } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardBody, Spinner, Button, Badge, Modal, Input } from '@/components/ui';
 import {
@@ -16,6 +16,7 @@ import {
   User,
   Briefcase,
   Clock,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -128,8 +129,25 @@ function TeamMemberModal({ isOpen, onClose, member, onSave }) {
     role: 'performance_marketer',
     specialization: '',
     availability: 'available',
+    projectId: '',
+    projectRole: '',
   });
   const [loading, setLoading] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [error, setError] = useState('');
+
+  // Fetch projects for assignment dropdown
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await projectService.getProjects({ limit: 100 });
+        setProjects(response.data || []);
+      } catch (err) {
+        console.error('Failed to fetch projects:', err);
+      }
+    };
+    fetchProjects();
+  }, []);
 
   useEffect(() => {
     if (member) {
@@ -140,6 +158,8 @@ function TeamMemberModal({ isOpen, onClose, member, onSave }) {
         role: member.role || 'performance_marketer',
         specialization: member.specialization || '',
         availability: member.availability || 'available',
+        projectId: '',
+        projectRole: '',
       });
     } else {
       setFormData({
@@ -149,21 +169,59 @@ function TeamMemberModal({ isOpen, onClose, member, onSave }) {
         role: 'performance_marketer',
         specialization: '',
         availability: 'available',
+        projectId: '',
+        projectRole: '',
       });
     }
+    setError('');
   }, [member]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
+
+    // Validate required fields
+    if (!formData.name.trim()) {
+      setError('Name is required');
+      setLoading(false);
+      return;
+    }
+    if (!formData.email.trim()) {
+      setError('Email is required');
+      setLoading(false);
+      return;
+    }
+    if (!member && !formData.password) {
+      setError('Password is required');
+      setLoading(false);
+      return;
+    }
+    if (!member && formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+
     try {
       await onSave(formData);
       onClose();
     } catch (error) {
-      // Error handled in parent
+      const errorMessage = error?.message || error?.errors?.[0] || 'Failed to save team member';
+      setError(errorMessage);
+      throw error;
     } finally {
       setLoading(false);
     }
+  };
+
+  // Map role to project assignment field
+  const roleToProjectRole = {
+    'performance_marketer': 'performance_marketer',
+    'ui_ux_designer': 'ui_ux_designer',
+    'graphic_designer': 'graphic_designer',
+    'developer': 'developer',
+    'tester': 'tester',
   };
 
   if (!isOpen) return null;
@@ -184,8 +242,16 @@ function TeamMemberModal({ isOpen, onClose, member, onSave }) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Error message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-700">
+              <AlertCircle size={18} />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
             <Input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -195,7 +261,7 @@ function TeamMemberModal({ isOpen, onClose, member, onSave }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
             <Input
               type="email"
               value={formData.email}
@@ -207,22 +273,30 @@ function TeamMemberModal({ isOpen, onClose, member, onSave }) {
 
           {!member && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password * (min 6 characters)</label>
               <Input
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder="Enter password"
                 required={!member}
+                minLength={6}
               />
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
             <select
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              onChange={(e) => {
+                const newRole = e.target.value;
+                setFormData({
+                  ...formData,
+                  role: newRole,
+                  projectRole: roleToProjectRole[newRole] || '',
+                });
+              }}
               className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               {ROLE_OPTIONS.map((option) => (
@@ -256,6 +330,34 @@ function TeamMemberModal({ isOpen, onClose, member, onSave }) {
               ))}
             </select>
           </div>
+
+          {/* Project Assignment (only for new members) */}
+          {!member && (
+            <div className="border-t border-gray-100 pt-4 mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Assign to Project (Optional)
+              </label>
+              <div className="space-y-2">
+                <select
+                  value={formData.projectId}
+                  onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Select a project...</option>
+                  {projects.map((project) => (
+                    <option key={project._id} value={project._id}>
+                      {project.projectName || project.businessName}
+                    </option>
+                  ))}
+                </select>
+                {formData.projectId && (
+                  <p className="text-xs text-gray-500">
+                    User will be assigned as {ROLE_OPTIONS.find(r => r.value === formData.role)?.label} to the selected project
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
@@ -352,22 +454,48 @@ export default function TeamManagementPage() {
 
   const handleCreateMember = async (formData) => {
     try {
-      await authService.createTeamMember(formData);
-      toast.success('Team member created successfully');
+      // Prepare data for API
+      const apiData = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        specialization: formData.specialization || '',
+        availability: formData.availability || 'available',
+      };
+
+      // Add project assignment if selected
+      if (formData.projectId) {
+        apiData.projectId = formData.projectId;
+        apiData.projectRole = formData.role;
+      }
+
+      const response = await authService.createTeamMember(apiData);
+      toast.success(response.message || 'Team member created successfully');
       fetchTeamMembers();
     } catch (error) {
-      toast.error(error.message || 'Failed to create team member');
+      const errorMessage = error?.message || error?.errors?.[0] || 'Failed to create team member';
+      toast.error(errorMessage);
       throw error;
     }
   };
 
   const handleUpdateMember = async (formData) => {
     try {
-      await authService.updateTeamMember(selectedMember._id, formData);
+      const apiData = {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        specialization: formData.specialization || '',
+        availability: formData.availability || 'available',
+      };
+
+      await authService.updateTeamMember(selectedMember._id, apiData);
       toast.success('Team member updated successfully');
       fetchTeamMembers();
     } catch (error) {
-      toast.error(error.message || 'Failed to update team member');
+      const errorMessage = error?.message || error?.errors?.[0] || 'Failed to update team member';
+      toast.error(errorMessage);
       throw error;
     }
   };

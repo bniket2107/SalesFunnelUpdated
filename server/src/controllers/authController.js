@@ -266,7 +266,23 @@ exports.getTeamMembers = async (req, res, next) => {
 // @access  Private (Admin only)
 exports.createTeamMember = async (req, res, next) => {
   try {
-    const { name, email, password, role, specialization } = req.body;
+    const { name, email, password, role, specialization, availability, projectId, projectRole } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, and password are required'
+      });
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters'
+      });
+    }
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
@@ -277,27 +293,84 @@ exports.createTeamMember = async (req, res, next) => {
       });
     }
 
-    // Create user
-    const user = await User.create({
+    // Validate role
+    const validRoles = ['admin', 'performance_marketer', 'ui_ux_designer', 'graphic_designer', 'developer', 'tester'];
+    if (role && !validRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid role. Valid roles are: ${validRoles.join(', ')}`
+      });
+    }
+
+    // Create user with all fields
+    const userData = {
       name,
       email,
       password,
       role: role || 'performance_marketer',
-      specialization
-    });
+      specialization: specialization || '',
+      availability: availability || 'available',
+      isActive: true
+    };
+
+    const user = await User.create(userData);
+
+    // If projectId is provided, assign user to project
+    if (projectId && projectRole) {
+      try {
+        const Project = require('../models/Project');
+        const project = await Project.findById(projectId);
+
+        if (project) {
+          // Map role to project team field
+          const roleToTeamField = {
+            'performance_marketer': 'performanceMarketer',
+            'ui_ux_designer': 'uiUxDesigner',
+            'graphic_designer': 'graphicDesigner',
+            'developer': 'developer',
+            'tester': 'tester'
+          };
+
+          const teamField = roleToTeamField[projectRole];
+          if (teamField) {
+            project.assignedTeam[teamField] = user._id;
+            await project.save();
+          }
+        }
+      } catch (projectError) {
+        console.error('Error assigning user to project:', projectError);
+        // Don't fail user creation if project assignment fails
+      }
+    }
+
+    // Return created user (without password)
+    const createdUser = await User.findById(user._id).select('-password');
 
     res.status(201).json({
       success: true,
-      data: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        specialization: user.specialization,
-        availability: user.availability
-      }
+      message: 'Team member created successfully',
+      data: createdUser
     });
   } catch (error) {
+    console.error('Error creating team member:', error);
+
+    // Handle specific errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation Error',
+        errors: messages
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'User with this email already exists'
+      });
+    }
+
     next(error);
   }
 };
@@ -310,9 +383,17 @@ exports.updateTeamMember = async (req, res, next) => {
     const { id } = req.params;
     const { name, email, role, specialization, availability, isActive } = req.body;
 
+    // Validate ID
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
     const fieldsToUpdate = {};
-    if (name) fieldsToUpdate.name = name;
-    if (email) {
+    if (name !== undefined) fieldsToUpdate.name = name;
+    if (email !== undefined) {
       // Check if email is already taken
       const existingUser = await User.findOne({ email, _id: { $ne: id } });
       if (existingUser) {
@@ -323,9 +404,29 @@ exports.updateTeamMember = async (req, res, next) => {
       }
       fieldsToUpdate.email = email;
     }
-    if (role) fieldsToUpdate.role = role;
+    if (role !== undefined) {
+      // Validate role
+      const validRoles = ['admin', 'performance_marketer', 'ui_ux_designer', 'graphic_designer', 'developer', 'tester'];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid role. Valid roles are: ${validRoles.join(', ')}`
+        });
+      }
+      fieldsToUpdate.role = role;
+    }
     if (specialization !== undefined) fieldsToUpdate.specialization = specialization;
-    if (availability) fieldsToUpdate.availability = availability;
+    if (availability !== undefined) {
+      // Validate availability
+      const validAvailability = ['available', 'busy', 'offline'];
+      if (!validAvailability.includes(availability)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid availability. Valid values are: ${validAvailability.join(', ')}`
+        });
+      }
+      fieldsToUpdate.availability = availability;
+    }
     if (isActive !== undefined) fieldsToUpdate.isActive = isActive;
 
     const user = await User.findByIdAndUpdate(
@@ -343,9 +444,11 @@ exports.updateTeamMember = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
+      message: 'Team member updated successfully',
       data: user
     });
   } catch (error) {
+    console.error('Error updating team member:', error);
     next(error);
   }
 };
@@ -410,6 +513,62 @@ exports.getTeamByRole = async (req, res, next) => {
       data: teamByRole
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Debug: Test database connection and user creation
+// @route   GET /api/auth/debug/test-db
+// @access  Private (Admin only)
+exports.debugTestDb = async (req, res, next) => {
+  try {
+    const mongoose = require('mongoose');
+
+    // Test database connection
+    const dbState = mongoose.connection.readyState;
+    const dbStates = {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    };
+
+    // Count users
+    const userCount = await User.countDocuments();
+    const activeUserCount = await User.countDocuments({ isActive: true });
+
+    // Test user creation (dry run - just validate)
+    const testUser = {
+      name: 'Test User',
+      email: 'test@example.com',
+      password: 'test123',
+      role: 'performance_marketer'
+    };
+
+    // Check if test email exists
+    const existingTestUser = await User.findOne({ email: testUser.email });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        database: {
+          state: dbStates[dbState],
+          readyState: dbState,
+          host: mongoose.connection.host,
+          name: mongoose.connection.name
+        },
+        users: {
+          total: userCount,
+          active: activeUserCount
+        },
+        testUser: {
+          canCreate: !existingTestUser,
+          existingTestUser: existingTestUser ? { email: existingTestUser.email, role: existingTestUser.role } : null
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Debug test error:', error);
     next(error);
   }
 };
