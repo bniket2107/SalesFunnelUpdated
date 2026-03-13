@@ -6,30 +6,37 @@ import { Card, CardBody, CardHeader, Button, Badge, Spinner } from '@/components
 import { ArrowLeft, Users, UserPlus, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Role labels and colors
+// Role configuration - keys match the backend User role values (underscore)
+// label is the display name
+// assignedTeamField is the corresponding field name in Project.assignedTeam (camelCase)
 const ROLE_CONFIG = {
-  performanceMarketer: {
+  performance_marketer: {
     label: 'Performance Marketer',
+    assignedTeamField: 'performanceMarketer',
     color: 'bg-blue-100 text-blue-700',
     borderColor: 'border-blue-200',
   },
-  uiUxDesigner: {
+  ui_ux_designer: {
     label: 'UI/UX Designer',
+    assignedTeamField: 'uiUxDesigner',
     color: 'bg-purple-100 text-purple-700',
     borderColor: 'border-purple-200',
   },
-  graphicDesigner: {
+  graphic_designer: {
     label: 'Graphic Designer',
+    assignedTeamField: 'graphicDesigner',
     color: 'bg-pink-100 text-pink-700',
     borderColor: 'border-pink-200',
   },
   developer: {
     label: 'Developer',
+    assignedTeamField: 'developer',
     color: 'bg-green-100 text-green-700',
     borderColor: 'border-green-200',
   },
   tester: {
     label: 'Tester',
+    assignedTeamField: 'tester',
     color: 'bg-orange-100 text-orange-700',
     borderColor: 'border-orange-200',
   },
@@ -42,13 +49,7 @@ export default function TeamAssignmentPage() {
   const [saving, setSaving] = useState(false);
   const [project, setProject] = useState(null);
   const [teamByRole, setTeamByRole] = useState({});
-  const [selectedTeam, setSelectedTeam] = useState({
-    performanceMarketer: null,
-    uiUxDesigner: null,
-    graphicDesigner: null,
-    developer: null,
-    tester: null,
-  });
+  const [selectedTeam, setSelectedTeam] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -65,17 +66,23 @@ export default function TeamAssignmentPage() {
       setProject(projectRes.data);
       setTeamByRole(teamRes.data);
 
-      // Set currently assigned team
+      // Set currently assigned team - map from assignedTeam fields to role keys
       if (projectRes.data.assignedTeam) {
-        setSelectedTeam({
-          performanceMarketer: projectRes.data.assignedTeam.performanceMarketer?._id || null,
-          uiUxDesigner: projectRes.data.assignedTeam.uiUxDesigner?._id || null,
-          graphicDesigner: projectRes.data.assignedTeam.graphicDesigner?._id || null,
-          developer: projectRes.data.assignedTeam.developer?._id || null,
-          tester: projectRes.data.assignedTeam.tester?._id || null,
+        const assignedTeam = {};
+        Object.entries(ROLE_CONFIG).forEach(([roleKey, config]) => {
+          const assignedTeamField = config.assignedTeamField;
+          if (projectRes.data.assignedTeam[assignedTeamField]) {
+            assignedTeam[roleKey] = projectRes.data.assignedTeam[assignedTeamField]._id ||
+                                    projectRes.data.assignedTeam[assignedTeamField];
+          }
         });
+        setSelectedTeam(assignedTeam);
       }
+
+      console.log('Team by role:', teamRes.data);
+      console.log('Assigned team:', projectRes.data.assignedTeam);
     } catch (error) {
+      console.error('Failed to load data:', error);
       toast.error('Failed to load data');
       navigate('/projects');
     } finally {
@@ -93,13 +100,24 @@ export default function TeamAssignmentPage() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await projectService.assignTeam(id, {
-        performanceMarketer: selectedTeam.performanceMarketer,
-        uiUxDesigner: selectedTeam.uiUxDesigner,
-        graphicDesigner: selectedTeam.graphicDesigner,
-        developer: selectedTeam.developer,
-        tester: selectedTeam.tester,
+
+      // Convert selectedTeam (role keys) to assignedTeam fields
+      const assignedTeamData = {};
+      Object.entries(selectedTeam).forEach(([roleKey, memberId]) => {
+        const config = ROLE_CONFIG[roleKey];
+        if (config && memberId) {
+          assignedTeamData[config.assignedTeamField] = memberId;
+        }
       });
+
+      // Set null for unassigned roles
+      Object.values(ROLE_CONFIG).forEach(config => {
+        if (!assignedTeamData[config.assignedTeamField]) {
+          assignedTeamData[config.assignedTeamField] = null;
+        }
+      });
+
+      await projectService.assignTeam(id, assignedTeamData);
       toast.success('Team assigned successfully!');
       navigate('/projects');
     } catch (error) {
@@ -118,6 +136,10 @@ export default function TeamAssignmentPage() {
       toast.error(error.message || 'Failed to activate project');
     }
   };
+
+  const hasPerformanceMarketer = Object.entries(ROLE_CONFIG).some(([roleKey, config]) => {
+    return config.assignedTeamField === 'performanceMarketer' && selectedTeam[roleKey];
+  });
 
   if (loading) {
     return (
@@ -182,25 +204,25 @@ export default function TeamAssignmentPage() {
         </CardHeader>
         <CardBody className="p-6">
           <div className="space-y-6">
-            {Object.entries(ROLE_CONFIG).map(([role, config]) => (
-              <div key={role}>
+            {Object.entries(ROLE_CONFIG).map(([roleKey, config]) => (
+              <div key={roleKey}>
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
                   {config.label}
                 </h4>
-                {teamByRole[role]?.length > 0 ? (
+                {teamByRole[roleKey]?.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {teamByRole[role].map((member) => (
+                    {teamByRole[roleKey].map((member) => (
                       <button
                         key={member._id}
-                        onClick={() => handleSelect(role, member._id)}
+                        onClick={() => handleSelect(roleKey, member._id)}
                         className={cn(
                           'flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left',
-                          selectedTeam[role] === member._id
+                          selectedTeam[roleKey] === member._id
                             ? `${config.borderColor} bg-opacity-10`
                             : 'border-gray-100 hover:border-gray-200'
                         )}
                         style={{
-                          backgroundColor: selectedTeam[role] === member._id
+                          backgroundColor: selectedTeam[roleKey] === member._id
                             ? config.color.replace('bg-', '').replace('text-', '').split(' ')[0].includes('blue') ? 'rgba(59, 130, 246, 0.1)'
                             : config.color.includes('purple') ? 'rgba(139, 92, 246, 0.1)'
                             : config.color.includes('pink') ? 'rgba(236, 72, 153, 0.1)'
@@ -226,7 +248,7 @@ export default function TeamAssignmentPage() {
                             </p>
                           )}
                         </div>
-                        {selectedTeam[role] === member._id && (
+                        {selectedTeam[roleKey] === member._id && (
                           <div className={cn(
                             'w-6 h-6 rounded-full flex items-center justify-center',
                             config.color.split(' ')[0]
@@ -263,7 +285,7 @@ export default function TeamAssignmentPage() {
           <Users className="w-4 h-4 mr-2" />
           Save Team Assignment
         </Button>
-        {selectedTeam.performanceMarketer && !project.isActive && (
+        {hasPerformanceMarketer && !project.isActive && (
           <Button
             className="bg-green-600 hover:bg-green-700"
             onClick={handleActivate}
