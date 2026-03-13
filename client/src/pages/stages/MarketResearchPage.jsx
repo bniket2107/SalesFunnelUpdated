@@ -4,10 +4,110 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { Card, CardBody, CardHeader, Button, Input, Textarea, Spinner } from '@/components/ui';
 import { StageProgressTracker } from '@/components/workflow';
-import { ArrowLeft, Plus, X, Upload, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Plus, X, Upload, CheckCircle, Lightbulb } from 'lucide-react';
 
 // STATIC DATA MODE - Set to true for development, false for API calls
 const USE_STATIC_DATA = false;
+
+// Predefined suggestions for quick selection
+const SUGGESTIONS = {
+  painPoints: [
+    'Low conversion rates',
+    'High customer acquisition cost',
+    'Poor lead quality',
+    'Inconsistent sales',
+    'Low website traffic',
+    'High cart abandonment',
+    'Poor customer retention',
+    'Ineffective marketing',
+    'Limited budget',
+    'Time constraints',
+    'Lack of automation',
+    'Poor brand awareness',
+    'Competition undercutting prices',
+    'Difficulty scaling',
+    'Low email open rates',
+  ],
+  desires: [
+    'Increase sales',
+    'Better ROI',
+    'Automated marketing',
+    'Higher conversion rates',
+    'Quality leads',
+    'Brand recognition',
+    'Customer loyalty',
+    'Scalable systems',
+    'Cost reduction',
+    'Time efficiency',
+    'Data-driven decisions',
+    'Competitive advantage',
+    'Recurring revenue',
+    'Market expansion',
+    'Better customer insights',
+  ],
+  existingPurchases: [
+    'CRM software',
+    'Email marketing tool',
+    'Analytics platform',
+    'Social media management',
+    'Advertising platform',
+    'Website hosting',
+    'SEO tools',
+    'Course/Training',
+    'Consulting services',
+    'Marketing automation',
+    'Landing page builder',
+    'Chat software',
+    'Phone system',
+    'Accounting software',
+  ],
+  interests: [
+    'Digital Marketing',
+    'Business Growth',
+    'Lead Generation',
+    'Sales Automation',
+    'Content Marketing',
+    'Social Media',
+    'Email Marketing',
+    'SEO',
+    'Paid Advertising',
+    'Analytics',
+    'Customer Experience',
+    'Brand Building',
+    'E-commerce',
+    'Funnel Optimization',
+    'Copywriting',
+  ],
+  ageRanges: [
+    '18-24 years',
+    '25-34 years',
+    '35-44 years',
+    '45-54 years',
+    '55-64 years',
+    '65+ years',
+  ],
+  incomeLevels: [
+    'Under $25,000/year',
+    '$25,000 - $50,000/year',
+    '$50,000 - $75,000/year',
+    '$75,000 - $100,000/year',
+    '$100,000 - $150,000/year',
+    '$150,000 - $250,000/year',
+    '$250,000+/year',
+  ],
+  professions: [
+    'Marketing Manager',
+    'Business Owner',
+    'Entrepreneur',
+    'CEO/Founder',
+    'Sales Director',
+    'Digital Marketer',
+    'E-commerce Manager',
+    'Marketing Consultant',
+    'Agency Owner',
+    'Product Manager',
+  ],
+};
 
 // Mock project data
 const STATIC_PROJECT = {
@@ -177,6 +277,10 @@ export default function MarketResearchPage() {
   const addItem = (field, value, setter) => {
     if (!value.trim()) return;
     const current = watch(field) || [];
+    if (current.includes(value.trim())) {
+      toast.info('This item is already added');
+      return;
+    }
     setValue(field, [...current, value.trim()]);
     setter('');
   };
@@ -184,6 +288,15 @@ export default function MarketResearchPage() {
   const removeItem = (field, index) => {
     const current = watch(field) || [];
     setValue(field, current.filter((_, i) => i !== index));
+  };
+
+  const addSuggestion = (field, suggestion) => {
+    const current = watch(field) || [];
+    if (current.includes(suggestion)) {
+      toast.info('This item is already added');
+      return;
+    }
+    setValue(field, [...current, suggestion]);
   };
 
   if (loading) {
@@ -258,30 +371,66 @@ export default function MarketResearchPage() {
           </CardHeader>
           <CardBody className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Age Range"
-                placeholder="e.g., 25-45 years"
-                error={errors.avatar?.ageRange?.message}
-                {...register('avatar.ageRange')}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Age Range</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  {...register('avatar.ageRange')}
+                >
+                  <option value="">Select age range...</option>
+                  {SUGGESTIONS.ageRanges.map((age) => (
+                    <option key={age} value={age}>{age}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-1">Or type a custom range below</p>
+                <Input
+                  placeholder="Custom age range..."
+                  {...register('avatar.ageRange')}
+                  className="mt-1"
+                />
+              </div>
               <Input
                 label="Location"
                 placeholder="e.g., United States, Urban areas"
                 error={errors.avatar?.location?.message}
                 {...register('avatar.location')}
               />
-              <Input
-                label="Income Level"
-                placeholder="e.g., $50,000 - $100,000/year"
-                error={errors.avatar?.income?.message}
-                {...register('avatar.income')}
-              />
-              <Input
-                label="Profession"
-                placeholder="e.g., Marketing Manager, Entrepreneur"
-                error={errors.avatar?.profession?.message}
-                {...register('avatar.profession')}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Income Level</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  {...register('avatar.income')}
+                >
+                  <option value="">Select income level...</option>
+                  {SUGGESTIONS.incomeLevels.map((income) => (
+                    <option key={income} value={income}>{income}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-1">Or type a custom income range below</p>
+                <Input
+                  placeholder="Custom income range..."
+                  {...register('avatar.income')}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Profession</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  {...register('avatar.profession')}
+                >
+                  <option value="">Select profession...</option>
+                  {SUGGESTIONS.professions.map((prof) => (
+                    <option key={prof} value={prof}>{prof}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-1">Or type a custom profession below</p>
+                <Input
+                  placeholder="Custom profession..."
+                  {...register('avatar.profession')}
+                  className="mt-1"
+                />
+              </div>
             </div>
 
             <div>
@@ -302,6 +451,23 @@ export default function MarketResearchPage() {
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
+              {/* Suggestion chips */}
+              <div className="flex flex-wrap gap-1 mb-3">
+                <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                  <Lightbulb className="w-3 h-3" /> Suggestions:
+                </span>
+                {SUGGESTIONS.interests.filter(s => !(watch('avatar.interests') || []).includes(s)).slice(0, 8).map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => addSuggestion('avatar.interests', suggestion)}
+                    className="text-xs px-2 py-1 bg-gray-100 hover:bg-primary-50 hover:text-primary-700 rounded-full transition-colors"
+                  >
+                    + {suggestion}
+                  </button>
+                ))}
+              </div>
+              {/* Selected items */}
               <div className="flex flex-wrap gap-2">
                 {(watch('avatar.interests') || []).map((interest, index) => (
                   <span
@@ -330,7 +496,7 @@ export default function MarketResearchPage() {
             <p className="text-sm text-gray-500">What problems does your customer face?</p>
           </CardHeader>
           <CardBody>
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-3">
               <Input
                 placeholder="Add a pain point..."
                 value={newPainPoint}
@@ -346,6 +512,23 @@ export default function MarketResearchPage() {
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+            {/* Suggestion chips */}
+            <div className="flex flex-wrap gap-1 mb-3">
+              <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                <Lightbulb className="w-3 h-3" /> Quick add:
+              </span>
+              {SUGGESTIONS.painPoints.filter(s => !(watch('painPoints') || []).includes(s)).slice(0, 10).map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => addSuggestion('painPoints', suggestion)}
+                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-red-50 hover:text-red-700 rounded-full transition-colors"
+                >
+                  + {suggestion}
+                </button>
+              ))}
+            </div>
+            {/* Selected items */}
             <div className="space-y-2">
               {(watch('painPoints') || []).map((point, index) => (
                 <div
@@ -373,7 +556,7 @@ export default function MarketResearchPage() {
             <p className="text-sm text-gray-500">What does your customer want to achieve?</p>
           </CardHeader>
           <CardBody>
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-3">
               <Input
                 placeholder="Add a desire..."
                 value={newDesire}
@@ -389,6 +572,23 @@ export default function MarketResearchPage() {
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+            {/* Suggestion chips */}
+            <div className="flex flex-wrap gap-1 mb-3">
+              <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                <Lightbulb className="w-3 h-3" /> Quick add:
+              </span>
+              {SUGGESTIONS.desires.filter(s => !(watch('desires') || []).includes(s)).slice(0, 10).map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => addSuggestion('desires', suggestion)}
+                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-green-50 hover:text-green-700 rounded-full transition-colors"
+                >
+                  + {suggestion}
+                </button>
+              ))}
+            </div>
+            {/* Selected items */}
             <div className="space-y-2">
               {(watch('desires') || []).map((desire, index) => (
                 <div
@@ -416,7 +616,7 @@ export default function MarketResearchPage() {
             <p className="text-sm text-gray-500">What has your customer already purchased?</p>
           </CardHeader>
           <CardBody>
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-3">
               <Input
                 placeholder="Add a purchase..."
                 value={newPurchase}
@@ -432,6 +632,23 @@ export default function MarketResearchPage() {
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+            {/* Suggestion chips */}
+            <div className="flex flex-wrap gap-1 mb-3">
+              <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
+                <Lightbulb className="w-3 h-3" /> Quick add:
+              </span>
+              {SUGGESTIONS.existingPurchases.filter(s => !(watch('existingPurchases') || []).includes(s)).slice(0, 10).map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => addSuggestion('existingPurchases', suggestion)}
+                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-blue-50 hover:text-blue-700 rounded-full transition-colors"
+                >
+                  + {suggestion}
+                </button>
+              ))}
+            </div>
+            {/* Selected items */}
             <div className="space-y-2">
               {(watch('existingPurchases') || []).map((purchase, index) => (
                 <div
