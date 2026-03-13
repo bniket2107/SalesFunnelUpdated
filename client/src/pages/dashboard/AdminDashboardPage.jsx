@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { authService, projectService } from '@/services/api';
+import { authService, projectService, notificationService, strategyService } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardBody, Spinner, Button, Badge } from '@/components/ui';
 import {
@@ -19,6 +19,10 @@ import {
   Settings,
   Activity,
   Briefcase,
+  X,
+  Eye,
+  CheckSquare,
+  AlertCircle,
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 
@@ -165,6 +169,202 @@ function ProjectCard({ project, onClick }) {
   );
 }
 
+// Strategy Detail Modal Component
+function StrategyDetailModal({ strategy, onClose, onReview }) {
+  const [reviewing, setReviewing] = useState(false);
+
+  const handleReview = async () => {
+    try {
+      setReviewing(true);
+      await strategyService.markReviewed(strategy.project._id);
+      toast.success('Strategy marked as reviewed');
+      onReview();
+    } catch (error) {
+      toast.error(error.message || 'Failed to mark as reviewed');
+    } finally {
+      setReviewing(false);
+    }
+  };
+
+  if (!strategy) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              Strategy Review: {strategy.project.projectName || strategy.project.businessName}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Completed by: {strategy.completedBy?.name || 'Unknown'} • {formatDate(strategy.project.strategyCompletedAt)}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <X size={20} className="text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+          {/* Stage Progress */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Stage Progress</h3>
+            <div className="grid grid-cols-6 gap-2">
+              {strategy.project.stageStatus?.map((stage, index) => (
+                <div key={stage.key} className="text-center">
+                  <div className={cn(
+                    'w-8 h-8 rounded-full mx-auto flex items-center justify-center text-sm font-medium',
+                    stage.isCompleted
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-400'
+                  )}>
+                    {stage.isCompleted ? <CheckCircle size={16} /> : index + 1}
+                  </div>
+                  <p className="text-xs mt-1 text-gray-500 truncate">{stage.name.split(' ')[0]}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Market Research Summary */}
+          {strategy.stages.marketResearch?.data && (
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">Market Research</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {strategy.stages.marketResearch.data.avatar && (
+                  <>
+                    <div>
+                      <span className="text-gray-500">Target Audience:</span>{' '}
+                      <span className="text-gray-900">
+                        {strategy.stages.marketResearch.data.avatar.ageRange}, {strategy.stages.marketResearch.data.avatar.profession}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Location:</span>{' '}
+                      <span className="text-gray-900">{strategy.stages.marketResearch.data.avatar.location}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+              {strategy.stages.marketResearch.data.painPoints?.length > 0 && (
+                <div className="mt-2">
+                  <span className="text-gray-500 text-sm">Pain Points:</span>{' '}
+                  <span className="text-gray-900 text-sm">{strategy.stages.marketResearch.data.painPoints.join(', ')}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Offer Engineering Summary */}
+          {strategy.stages.offerEngineering?.data && (
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">Offer Engineering</h4>
+              <div className="text-sm text-gray-700">
+                {strategy.stages.offerEngineering.data.headline && (
+                  <p><span className="text-gray-500">Headline:</span> {strategy.stages.offerEngineering.data.headline}</p>
+                )}
+                {strategy.stages.offerEngineering.data.mainOffer && (
+                  <p className="mt-1"><span className="text-gray-500">Main Offer:</span> {strategy.stages.offerEngineering.data.mainOffer}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Traffic Strategy Summary */}
+          {strategy.stages.trafficStrategy?.data && (
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">Traffic Strategy</h4>
+              <div className="text-sm text-gray-700">
+                {strategy.stages.trafficStrategy.data.channels && (
+                  <p>
+                    <span className="text-gray-500">Channels:</span>{' '}
+                    {Object.entries(strategy.stages.trafficStrategy.data.channels)
+                      .filter(([_, v]) => v?.enabled)
+                      .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1))
+                      .join(', ') || 'None selected'}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Landing Page Summary */}
+          {strategy.stages.landingPage?.data && (
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">Landing Page</h4>
+              <div className="text-sm text-gray-700">
+                {strategy.stages.landingPage.data.headline && (
+                  <p><span className="text-gray-500">Headline:</span> {strategy.stages.landingPage.data.headline}</p>
+                )}
+                {strategy.stages.landingPage.data.subheadline && (
+                  <p className="mt-1"><span className="text-gray-500">Subheadline:</span> {strategy.stages.landingPage.data.subheadline}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Creative Strategy Summary */}
+          {strategy.stages.creativeStrategy?.data && (
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-2">Creative Strategy</h4>
+              <div className="text-sm text-gray-700">
+                {strategy.stages.creativeStrategy.data.adTypes?.length > 0 && (
+                  <p><span className="text-gray-500">Ad Types:</span> {strategy.stages.creativeStrategy.data.adTypes.map(at => at.typeName).join(', ')}</p>
+                )}
+                {strategy.stages.creativeStrategy.data.creativeBrief && (
+                  <p className="mt-1"><span className="text-gray-500">Brief:</span> {strategy.stages.creativeStrategy.data.creativeBrief.substring(0, 100)}...</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Team */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <h4 className="font-medium text-gray-900 mb-3">Assigned Team</h4>
+            <div className="flex flex-wrap gap-3">
+              {strategy.project.assignedTeam?.performanceMarketer && (
+                <Badge className="bg-blue-100 text-blue-700">
+                  PM: {strategy.project.assignedTeam.performanceMarketer.name}
+                </Badge>
+              )}
+              {strategy.project.assignedTeam?.uiUxDesigner && (
+                <Badge className="bg-purple-100 text-purple-700">
+                  UI/UX: {strategy.project.assignedTeam.uiUxDesigner.name}
+                </Badge>
+              )}
+              {strategy.project.assignedTeam?.graphicDesigner && (
+                <Badge className="bg-pink-100 text-pink-700">
+                  Design: {strategy.project.assignedTeam.graphicDesigner.name}
+                </Badge>
+              )}
+              {strategy.project.assignedTeam?.developer && (
+                <Badge className="bg-green-100 text-green-700">
+                  Dev: {strategy.project.assignedTeam.developer.name}
+                </Badge>
+              )}
+              {strategy.project.assignedTeam?.tester && (
+                <Badge className="bg-orange-100 text-orange-700">
+                  QA: {strategy.project.assignedTeam.tester.name}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+          <Button onClick={handleReview} loading={reviewing}>
+            <CheckSquare size={16} className="mr-2" />
+            Mark as Reviewed
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -181,6 +381,10 @@ export default function AdminDashboardPage() {
     byRole: {},
     available: 0,
   });
+  const [notifications, setNotifications] = useState([]);
+  const [strategyNotifications, setStrategyNotifications] = useState([]);
+  const [selectedStrategy, setSelectedStrategy] = useState(null);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -189,9 +393,10 @@ export default function AdminDashboardPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [dashboardRes, teamRes] = await Promise.all([
+      const [dashboardRes, teamRes, notifRes] = await Promise.all([
         projectService.getDashboardStats(),
-        authService.getTeamMembers()
+        authService.getTeamMembers(),
+        notificationService.getNotifications({ limit: 10 })
       ]);
 
       setStats(dashboardRes.data);
@@ -213,11 +418,41 @@ export default function AdminDashboardPage() {
         byRole: teamByRole,
         available: availableCount,
       });
+
+      // Filter strategy completion notifications
+      const allNotifications = notifRes.data || [];
+      setNotifications(allNotifications);
+      setStrategyNotifications(allNotifications.filter(n => n.type === 'strategy_completed'));
+
     } catch (error) {
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewStrategy = async (notification) => {
+    try {
+      const response = await strategyService.getCompleteStrategy(notification.projectId._id);
+      setSelectedStrategy(response.data);
+    } catch (error) {
+      toast.error('Failed to load strategy details');
+    }
+  };
+
+  const handleMarkNotificationRead = async (notificationId) => {
+    try {
+      await notificationService.markAsRead(notificationId);
+      setNotifications(prev => prev.filter(n => n._id !== notificationId));
+      setStrategyNotifications(prev => prev.filter(n => n._id !== notificationId));
+    } catch (error) {
+      console.error('Failed to mark notification as read');
+    }
+  };
+
+  const handleStrategyReviewed = () => {
+    setSelectedStrategy(null);
+    fetchData();
   };
 
   if (loading) {
@@ -241,6 +476,61 @@ export default function AdminDashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Notifications Bell */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <Bell size={20} className="text-gray-600" />
+              {strategyNotifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {strategyNotifications.length}
+                </span>
+              )}
+            </button>
+
+            {/* Notifications Dropdown */}
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
+                <div className="p-4 border-b border-gray-100">
+                  <h3 className="font-semibold text-gray-900">Notifications</h3>
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  {strategyNotifications.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      No new notifications
+                    </div>
+                  ) : (
+                    strategyNotifications.map((notification) => (
+                      <div
+                        key={notification._id}
+                        className="p-4 border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => {
+                          handleViewStrategy(notification);
+                          setShowNotifications(false);
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-green-100 rounded-lg">
+                            <CheckCircle size={16} className="text-green-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">{notification.title}</p>
+                            <p className="text-xs text-gray-500 mt-1">{notification.message}</p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {formatDate(notification.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <Button variant="outline" onClick={() => navigate('/team')}>
             <Users size={18} className="mr-2" />
             Manage Team
@@ -250,6 +540,32 @@ export default function AdminDashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* Strategy Completion Alerts */}
+      {strategyNotifications.length > 0 && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <CheckCircle size={20} className="text-green-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-green-800">
+                {strategyNotifications.length} Strategy{strategyNotifications.length > 1 ? 's' : ''} Completed
+              </h3>
+              <p className="text-sm text-green-600">
+                {strategyNotifications.map(n => n.projectId?.projectName || n.projectId?.businessName).join(', ')}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => handleViewStrategy(strategyNotifications[0])}
+            >
+              <Eye size={16} className="mr-2" />
+              Review
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -413,6 +729,15 @@ export default function AdminDashboardPage() {
           <p className="text-sm text-gray-500 mt-1">Configure your workspace</p>
         </button>
       </div>
+
+      {/* Strategy Detail Modal */}
+      {selectedStrategy && (
+        <StrategyDetailModal
+          strategy={selectedStrategy}
+          onClose={() => setSelectedStrategy(null)}
+          onReview={handleStrategyReviewed}
+        />
+      )}
     </div>
   );
 }

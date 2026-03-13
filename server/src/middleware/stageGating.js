@@ -1,4 +1,6 @@
 const Project = require('../models/Project');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // Stage mapping for validation
 const STAGE_MAP = {
@@ -117,6 +119,30 @@ exports.completeStage = async (projectId, stageKey) => {
 
   // Calculate overall progress
   project.calculateProgress();
+
+  // Check if all stages are completed (strategy complete)
+  const allStagesComplete = stageOrder.every(stage => project.stages[stage]?.isCompleted);
+
+  if (allStagesComplete && project.strategyStatus === 'in_progress') {
+    project.strategyStatus = 'completed';
+    project.strategyCompletedAt = new Date();
+
+    // Notify all admins about strategy completion
+    const admins = await User.find({ role: 'admin', isActive: true });
+    const projectDisplay = project.projectName || project.businessName;
+
+    for (const admin of admins) {
+      await Notification.create({
+        recipient: admin._id,
+        type: 'strategy_completed',
+        title: 'Strategy Completed',
+        message: `The full strategy for project "${projectDisplay}" has been completed by the Performance Marketer and is ready for your review.`,
+        projectId: project._id
+      });
+    }
+
+    console.log(`Strategy completed for project ${projectDisplay}. Notified ${admins.length} admins.`);
+  }
 
   await project.save();
   return project;

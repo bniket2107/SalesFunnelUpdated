@@ -156,4 +156,12 @@ export const taskService = {
   getTeamMembers: () => api.get('/tasks/team-members'),
 };
 
+// Strategy service
+export const strategyService = {
+  getCompleteStrategy: (projectId) => api.get(`/strategy/${projectId}`),
+  markReviewed: (projectId, notes) => api.put(`/strategy/${projectId}/review`, { notes }),
+  getPendingReview: () => api.get('/strategy/pending-review'),
+  getStats: () => api.get('/strategy/stats'),
+};
+
 export default api;

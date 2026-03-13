@@ -160,6 +160,21 @@ const projectSchema = new mongoose.Schema({
     type: String,
     enum: ['active', 'paused', 'completed', 'archived'],
     default: 'active'
+  },
+  strategyStatus: {
+    type: String,
+    enum: ['in_progress', 'completed', 'reviewed'],
+    default: 'in_progress'
+  },
+  strategyCompletedAt: {
+    type: Date
+  },
+  strategyReviewedAt: {
+    type: Date
+  },
+  reviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }
 }, {
   timestamps: true

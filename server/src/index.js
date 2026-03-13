@@ -19,6 +19,7 @@ const landingPageRoutes = require('./routes/landingPages');
 const creativeRoutes = require('./routes/creatives');
 const taskRoutes = require('./routes/tasks');
 const notificationRoutes = require('./routes/notifications');
+const strategyRoutes = require('./routes/strategy');
 
 // Import controllers for Socket.io integration
 const { setIO, createNotification } = require('./controllers/projectController');
@@ -60,6 +61,7 @@ app.use('/api/landing-pages', landingPageRoutes);
 app.use('/api/creatives', creativeRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/strategy', strategyRoutes);
 
 // 404 handler
 app.use((req, res, next) => {
