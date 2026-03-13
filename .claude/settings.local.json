@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"A:\\\\LandingPagesUkValley\\\\SalesFunnelDashboard\\\\server\" && node src/scripts/seed.js)",
+      "Bash(curl -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@growthvalley.com\",\"password\":\"admin123\"}' 2>&1 || echo \"Backend not responding\")",
+      "Bash(curl http://localhost:5173 2>&1 | head -5 || echo \"Frontend not running\")",
+      "Bash(cd \"A:\\\\LandingPagesUkValley\\\\SalesFunnelDashboard\\\\client\" && npm run build 2>&1 | head -50)",
+      "Bash(curl -s http://localhost:5000/api/health && echo \"\" && curl -s http://localhost:5173 | head -3)",
+      "Bash(curl -s http://localhost:5000/api/health)"
+    ]
+  }
+}

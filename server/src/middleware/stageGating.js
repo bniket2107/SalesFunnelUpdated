@@ -1,0 +1,151 @@
+const Project = require('../models/Project');
+
+// Stage mapping for validation
+const STAGE_MAP = {
+  onboarding: { order: 1, previous: null },
+  marketResearch: { order: 2, previous: 'onboarding' },
+  offerEngineering: { order: 3, previous: 'marketResearch' },
+  trafficStrategy: { order: 4, previous: 'offerEngineering' },
+  landingPage: { order: 5, previous: 'trafficStrategy' },
+  creativeStrategy: { order: 6, previous: 'landingPage' }
+};
+
+// Middleware to check stage access
+exports.checkStageAccess = (stageKey) => {
+  return async (req, res, next) => {
+    try {
+      const { projectId } = req.params;
+
+      if (!projectId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Project ID is required'
+        });
+      }
+
+      const project = await Project.findById(projectId);
+
+      if (!project) {
+        return res.status(404).json({
+          success: false,
+          message: 'Project not found'
+        });
+      }
+
+      // Check if user has access to this project
+      if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to access this project'
+        });
+      }
+
+      const stageInfo = STAGE_MAP[stageKey];
+
+      if (!stageInfo) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid stage key'
+        });
+      }
+
+      // Check if this is the first stage (always accessible)
+      if (stageInfo.order === 1) {
+        req.project = project;
+        return next();
+      }
+
+      // Check if all previous stages are completed
+      const previousStageKey = stageInfo.previous;
+      const previousStage = project.stages[previousStageKey];
+
+      if (!previousStage || !previousStage.isCompleted) {
+        return res.status(403).json({
+          success: false,
+          message: `Complete ${formatStageName(previousStageKey)} first to access this stage`,
+          stageGate: {
+            currentStage: stageKey,
+            requiredStage: previousStageKey,
+            requiredStageComplete: false
+          }
+        });
+      }
+
+      req.project = project;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
+// Middleware to mark stage as completed
+exports.completeStage = async (projectId, stageKey) => {
+  const project = await Project.findById(projectId);
+
+  if (!project) {
+    throw new Error('Project not found');
+  }
+
+  if (!project.stages[stageKey]) {
+    throw new Error('Invalid stage key');
+  }
+
+  project.stages[stageKey].isCompleted = true;
+  project.stages[stageKey].completedAt = new Date();
+
+  // Update current stage to next stage
+  const stageOrder = ['onboarding', 'marketResearch', 'offerEngineering', 'trafficStrategy', 'landingPage', 'creativeStrategy'];
+  const currentIndex = stageOrder.indexOf(stageKey);
+
+  if (currentIndex < stageOrder.length - 1) {
+    project.currentStage = currentIndex + 2; // +2 because stage starts at 1
+  }
+
+  // Calculate overall progress
+  project.calculateProgress();
+
+  await project.save();
+  return project;
+};
+
+// Get stage status for a project
+exports.getStageStatus = (project) => {
+  const stages = [
+    { key: 'onboarding', name: 'Customer Onboarding', order: 1 },
+    { key: 'marketResearch', name: 'Market Research', order: 2 },
+    { key: 'offerEngineering', name: 'Offer Engineering', order: 3 },
+    { key: 'trafficStrategy', name: 'Traffic Strategy', order: 4 },
+    { key: 'landingPage', name: 'Landing Page & Lead Capture', order: 5 },
+    { key: 'creativeStrategy', name: 'Creative Strategy Execution', order: 6 }
+  ];
+
+  return stages.map((stage, index) => {
+    const stageData = project.stages[stage.key] || {};
+    const isCompleted = stageData.isCompleted || false;
+    const isAccessible = index === 0 || (project.stages[stages[index - 1].key]?.isCompleted);
+
+    return {
+      ...stage,
+      isCompleted,
+      isAccessible,
+      completedAt: stageData.completedAt,
+      isLocked: !isAccessible
+    };
+  });
+};
+
+// Helper function to format stage names
+function formatStageName(stageKey) {
+  const names = {
+    onboarding: 'Customer Onboarding',
+    marketResearch: 'Market Research',
+    offerEngineering: 'Offer Engineering',
+    trafficStrategy: 'Traffic Strategy',
+    landingPage: 'Landing Page & Lead Capture',
+    creativeStrategy: 'Creative Strategy Execution'
+  };
+  return names[stageKey] || stageKey;
+}
+
+module.exports.STAGE_MAP = STAGE_MAP;

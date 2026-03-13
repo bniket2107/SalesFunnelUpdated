@@ -1,0 +1,141 @@
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
+import {
+  LayoutDashboard,
+  FolderKanban,
+  Search,
+  Gift,
+  TrendingUp,
+  FileText,
+  Lightbulb,
+  Settings,
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  User,
+  Bell,
+  MessageSquare,
+  CheckSquare,
+} from 'lucide-react';
+
+const navigation = [
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Projects', href: '/projects', icon: FolderKanban },
+  { name: 'Tasks', href: '/tasks', icon: CheckSquare },
+  { name: 'Market Research', href: '/market-research', icon: Search },
+  { name: 'Offer Engineering', href: '/offer-engineering', icon: Gift },
+  { name: 'Traffic Strategy', href: '/traffic-strategy', icon: TrendingUp },
+  { name: 'Landing Pages', href: '/landing-pages', icon: FileText },
+  { name: 'Creative Strategy', href: '/creative-strategy', icon: Lightbulb },
+  { name: 'Messages', href: '/messages', icon: MessageSquare },
+  { name: 'Settings', href: '/settings', icon: Settings },
+];
+
+export default function Sidebar({ collapsed, setCollapsed }) {
+  const location = useLocation();
+  const { user, logout } = useAuth();
+
+  return (
+    <aside
+      className={cn(
+        'fixed left-0 top-0 z-40 h-screen bg-dark-300 border-r border-dark-200 transition-all duration-300',
+        'flex flex-col',
+        collapsed ? 'w-20' : 'w-64'
+      )}
+    >
+      {/* Logo */}
+      <div className="flex items-center justify-between h-16 px-4 border-b border-dark-200">
+        {!collapsed && (
+          <Link to="/" className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-dark-300 font-bold text-lg">G</span>
+            </div>
+            <div>
+              <span className="font-bold text-white text-lg">Growth</span>
+              <span className="font-bold text-primary-500 text-lg ml-1">Valley</span>
+            </div>
+          </Link>
+        )}
+        {collapsed && (
+          <div className="w-9 h-9 mx-auto bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg">
+            <span className="text-dark-300 font-bold text-lg">G</span>
+          </div>
+        )}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-dark-200 transition-all duration-200"
+        >
+          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        </button>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-4 px-3 dark-sidebar">
+        <ul className="space-y-1">
+          {navigation.map((item) => {
+            const isActive = location.pathname === item.href ||
+              (item.href !== '/' && location.pathname.startsWith(item.href));
+            return (
+              <li key={item.name}>
+                <Link
+                  to={item.href}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+                    isActive
+                      ? 'bg-primary-500/10 text-primary-500 border-l-2 border-primary-500'
+                      : 'text-gray-400 hover:bg-dark-200 hover:text-white',
+                    collapsed && 'justify-center'
+                  )}
+                  title={collapsed ? item.name : undefined}
+                >
+                  <item.icon size={20} className={cn(isActive && 'text-primary-500')} />
+                  {!collapsed && <span>{item.name}</span>}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      {/* User section */}
+      <div className="border-t border-dark-200 p-4">
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={logout}
+              className="p-2 rounded-xl hover:bg-dark-200 text-gray-400 hover:text-white transition-all duration-200"
+              title="Logout"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-dark-200 rounded-xl flex items-center justify-center ring-2 ring-primary-500/20">
+              <User size={18} className="text-primary-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">
+                {user?.name || 'User'}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {user?.email || ''}
+              </p>
+            </div>
+            <button
+              onClick={logout}
+              className="p-2 rounded-xl hover:bg-dark-200 text-gray-400 hover:text-white transition-all duration-200"
+              title="Logout"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}

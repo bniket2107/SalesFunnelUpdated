@@ -1,0 +1,132 @@
+import axios from 'axios';
+
+// Create axios instance
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor
+api.interceptors.request.use(
+  (config) => {
+    console.log('API Request:', config.method?.toUpperCase(), config.url);
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    console.error('API Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor
+api.interceptors.response.use(
+  (response) => {
+    console.log('API Response:', response.config.url, response.data);
+    return response.data;
+  },
+  (error) => {
+    console.error('API Error:', error.response?.data || error.message);
+    const message = error.response?.data?.message || error.message || 'An error occurred';
+
+    // Handle authentication errors
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+
+    return Promise.reject(error.response?.data || { message });
+  }
+);
+
+// Auth service
+export const authService = {
+  login: (data) => api.post('/auth/login', data),
+  register: (data) => api.post('/auth/register', data),
+  getMe: () => api.get('/auth/me'),
+  updateDetails: (data) => api.put('/auth/updatedetails', data),
+  updatePassword: (data) => api.put('/auth/updatepassword', data),
+  logout: () => api.post('/auth/logout'),
+};
+
+// Project service
+export const projectService = {
+  getProjects: (params) => api.get('/projects', { params }),
+  getProject: (id) => api.get(`/projects/${id}`),
+  createProject: (data) => api.post('/projects', data),
+  updateProject: (id, data) => api.put(`/projects/${id}`, data),
+  deleteProject: (id) => api.delete(`/projects/${id}`),
+  getProgress: (id) => api.get(`/projects/${id}/progress`),
+  getDashboardStats: () => api.get('/projects/dashboard/stats'),
+};
+
+// Market Research service
+export const marketResearchService = {
+  get: (projectId) => api.get(`/market-research/${projectId}`),
+  upsert: (projectId, data) => api.post(`/market-research/${projectId}`, data),
+  uploadVisionBoard: (projectId, formData) =>
+    api.post(`/market-research/${projectId}/vision-board`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  uploadStrategySheet: (projectId, formData) =>
+    api.post(`/market-research/${projectId}/strategy-sheet`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+};
+
+// Offer service
+export const offerService = {
+  get: (projectId) => api.get(`/offers/${projectId}`),
+  upsert: (projectId, data) => api.post(`/offers/${projectId}`, data),
+  addBonus: (projectId, data) => api.post(`/offers/${projectId}/bonuses`, data),
+  removeBonus: (projectId, bonusId) => api.delete(`/offers/${projectId}/bonuses/${bonusId}`),
+};
+
+// Traffic Strategy service
+export const trafficStrategyService = {
+  get: (projectId) => api.get(`/traffic-strategy/${projectId}`),
+  upsert: (projectId, data) => api.post(`/traffic-strategy/${projectId}`, data),
+  addHook: (projectId, data) => api.post(`/traffic-strategy/${projectId}/hooks`, data),
+  removeHook: (projectId, hookId) => api.delete(`/traffic-strategy/${projectId}/hooks/${hookId}`),
+  toggleChannel: (projectId, channelName, data) =>
+    api.patch(`/traffic-strategy/${projectId}/channels/${channelName}`, data),
+};
+
+// Landing Page service
+export const landingPageService = {
+  get: (projectId) => api.get(`/landing-pages/${projectId}`),
+  upsert: (projectId, data) => api.post(`/landing-pages/${projectId}`, data),
+  addNurturing: (projectId, data) => api.post(`/landing-pages/${projectId}/nurturing`, data),
+  removeNurturing: (projectId, nurturingId) =>
+    api.delete(`/landing-pages/${projectId}/nurturing/${nurturingId}`),
+};
+
+// Creative Strategy service
+export const creativeService = {
+  get: (projectId) => api.get(`/creatives/${projectId}`),
+  upsert: (projectId, data) => api.post(`/creatives/${projectId}`, data),
+  generateCards: (projectId, data) => api.post(`/creatives/${projectId}/generate`, data),
+  addCreative: (projectId, stage, data) =>
+    api.post(`/creatives/${projectId}/stages/${stage}/creatives`, data),
+  updateCreative: (projectId, stage, creativeId, data) =>
+    api.put(`/creatives/${projectId}/stages/${stage}/creatives/${creativeId}`, data),
+  deleteCreative: (projectId, stage, creativeId) =>
+    api.delete(`/creatives/${projectId}/stages/${stage}/creatives/${creativeId}`),
+};
+
+// Task service
+export const taskService = {
+  getMyTasks: (params) => api.get('/tasks/my-tasks', { params }),
+  getAllTasks: (params) => api.get('/tasks', { params }),
+  getTask: (taskId) => api.get(`/tasks/${taskId}`),
+  updateTaskStatus: (taskId, data) => api.put(`/tasks/${taskId}/status`, data),
+  updateTaskContent: (taskId, data) => api.put(`/tasks/${taskId}/content`, data),
+  getTeamMembers: () => api.get('/tasks/team-members'),
+};
+
+export default api;
