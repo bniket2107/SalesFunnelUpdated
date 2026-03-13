@@ -134,10 +134,10 @@ const STATIC_PROJECT = {
 // Mock market research data
 const STATIC_MARKET_RESEARCH = {
   avatar: {
-    ageRange: '25-45',
+    ageRange: '25-34 years',
     location: 'United States, Urban areas',
-    income: '$50,000 - $100,000/year',
-    profession: 'Marketing Manager, Entrepreneur',
+    income: '$50,000 - $75,000/year',
+    profession: 'Marketing Manager',
     interests: ['Digital Marketing', 'Business Growth', 'Lead Generation']
   },
   painPoints: ['Low conversion rates', 'High customer acquisition cost', 'Poor lead quality'],
@@ -147,6 +147,48 @@ const STATIC_MARKET_RESEARCH = {
   completionPercentage: 50,
   isCompleted: false
 };
+
+// Reusable AvatarSelectField component to avoid duplicate registration bug
+function AvatarSelectField({ label, fieldName, options, register, watch, setValue }) {
+  const currentValue = watch(fieldName) || '';
+  const isCustom = currentValue && !options.includes(currentValue);
+
+  const handleSelectChange = (e) => {
+    const val = e.target.value;
+    if (val !== '__custom__') {
+      setValue(fieldName, val);
+    }
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <select
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+        value={isCustom ? '__custom__' : currentValue}
+        onChange={handleSelectChange}
+      >
+        <option value="">Select {label.toLowerCase()}...</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+        <option value="__custom__">Custom...</option>
+      </select>
+      {/* Show custom input only when "Custom..." is selected or a custom value exists */}
+      {(isCustom || currentValue === '') && (
+        <Input
+          placeholder={`Enter custom ${label.toLowerCase()}...`}
+          value={isCustom ? currentValue : ''}
+          onChange={(e) => setValue(fieldName, e.target.value)}
+          className="mt-2"
+        />
+      )}
+      {currentValue && !isCustom && (
+        <p className="text-xs text-primary-600 mt-1">Selected: <strong>{currentValue}</strong></p>
+      )}
+    </div>
+  );
+}
 
 export default function MarketResearchPage() {
   const [searchParams] = useSearchParams();
@@ -196,7 +238,6 @@ export default function MarketResearchPage() {
       setLoading(true);
 
       if (USE_STATIC_DATA) {
-        // Use static data for development
         setProject(STATIC_PROJECT);
         setValue('avatar', STATIC_MARKET_RESEARCH.avatar);
         setValue('painPoints', STATIC_MARKET_RESEARCH.painPoints);
@@ -205,7 +246,6 @@ export default function MarketResearchPage() {
         setValue('competitors', STATIC_MARKET_RESEARCH.competitors[0]?.name || '');
         setIsCompleted(STATIC_MARKET_RESEARCH.isCompleted);
       } else {
-        // Real API calls (when USE_STATIC_DATA is false)
         const { projectService, marketResearchService } = await import('@/services/api');
         const [projectRes, dataRes] = await Promise.all([
           projectService.getProject(projectId),
@@ -237,7 +277,6 @@ export default function MarketResearchPage() {
       setSaving(true);
 
       if (USE_STATIC_DATA) {
-        // Static mode - simulate save
         await new Promise(resolve => setTimeout(resolve, 500));
         if (markComplete) {
           setIsCompleted(true);
@@ -258,7 +297,6 @@ export default function MarketResearchPage() {
           toast.success('Progress saved!');
         }
       } else {
-        // Real API call
         const { marketResearchService } = await import('@/services/api');
         await marketResearchService.upsert(projectId, {
           ...formData,
@@ -307,7 +345,6 @@ export default function MarketResearchPage() {
     );
   }
 
-  // Calculate progress from form data
   const calculateProgress = () => {
     const fields = [
       watch('avatar.ageRange'),
@@ -371,68 +408,40 @@ export default function MarketResearchPage() {
           </CardHeader>
           <CardBody className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Age Range</label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  {...register('avatar.ageRange')}
-                >
-                  <option value="">Select age range...</option>
-                  {SUGGESTIONS.ageRanges.map((age) => (
-                    <option key={age} value={age}>{age}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-400 mt-1">Or type a custom range below</p>
-                <Input
-                  placeholder="Custom age range..."
-                  {...register('avatar.ageRange')}
-                  className="mt-1"
-                />
-              </div>
+              {/* FIX: Use AvatarSelectField to avoid dual-registration of the same field name */}
+              <AvatarSelectField
+                label="Age Range"
+                fieldName="avatar.ageRange"
+                options={SUGGESTIONS.ageRanges}
+                register={register}
+                watch={watch}
+                setValue={setValue}
+              />
               <Input
                 label="Location"
                 placeholder="e.g., United States, Urban areas"
                 error={errors.avatar?.location?.message}
                 {...register('avatar.location')}
               />
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Income Level</label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  {...register('avatar.income')}
-                >
-                  <option value="">Select income level...</option>
-                  {SUGGESTIONS.incomeLevels.map((income) => (
-                    <option key={income} value={income}>{income}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-400 mt-1">Or type a custom income range below</p>
-                <Input
-                  placeholder="Custom income range..."
-                  {...register('avatar.income')}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Profession</label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  {...register('avatar.profession')}
-                >
-                  <option value="">Select profession...</option>
-                  {SUGGESTIONS.professions.map((prof) => (
-                    <option key={prof} value={prof}>{prof}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-400 mt-1">Or type a custom profession below</p>
-                <Input
-                  placeholder="Custom profession..."
-                  {...register('avatar.profession')}
-                  className="mt-1"
-                />
-              </div>
+              <AvatarSelectField
+                label="Income Level"
+                fieldName="avatar.income"
+                options={SUGGESTIONS.incomeLevels}
+                register={register}
+                watch={watch}
+                setValue={setValue}
+              />
+              <AvatarSelectField
+                label="Profession"
+                fieldName="avatar.profession"
+                options={SUGGESTIONS.professions}
+                register={register}
+                watch={watch}
+                setValue={setValue}
+              />
             </div>
 
+            {/* Interests */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Interests</label>
               <div className="flex gap-2 mb-2">
@@ -451,12 +460,11 @@ export default function MarketResearchPage() {
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
-              {/* Suggestion chips */}
               <div className="flex flex-wrap gap-1 mb-3">
                 <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
                   <Lightbulb className="w-3 h-3" /> Suggestions:
                 </span>
-                {SUGGESTIONS.interests.filter(s => !(watch('avatar.interests') || []).includes(s)).slice(0, 8).map((suggestion) => (
+                {SUGGESTIONS.interests.filter(s => !interests.includes(s)).slice(0, 8).map((suggestion) => (
                   <button
                     key={suggestion}
                     type="button"
@@ -467,9 +475,8 @@ export default function MarketResearchPage() {
                   </button>
                 ))}
               </div>
-              {/* Selected items */}
               <div className="flex flex-wrap gap-2">
-                {(watch('avatar.interests') || []).map((interest, index) => (
+                {interests.map((interest, index) => (
                   <span
                     key={index}
                     className="inline-flex items-center gap-1 px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-sm"
@@ -512,12 +519,11 @@ export default function MarketResearchPage() {
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
-            {/* Suggestion chips */}
             <div className="flex flex-wrap gap-1 mb-3">
               <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
                 <Lightbulb className="w-3 h-3" /> Quick add:
               </span>
-              {SUGGESTIONS.painPoints.filter(s => !(watch('painPoints') || []).includes(s)).slice(0, 10).map((suggestion) => (
+              {SUGGESTIONS.painPoints.filter(s => !painPoints.includes(s)).slice(0, 10).map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
@@ -528,9 +534,8 @@ export default function MarketResearchPage() {
                 </button>
               ))}
             </div>
-            {/* Selected items */}
             <div className="space-y-2">
-              {(watch('painPoints') || []).map((point, index) => (
+              {painPoints.map((point, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-3 bg-red-50 text-red-800 rounded-lg"
@@ -572,12 +577,11 @@ export default function MarketResearchPage() {
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
-            {/* Suggestion chips */}
             <div className="flex flex-wrap gap-1 mb-3">
               <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
                 <Lightbulb className="w-3 h-3" /> Quick add:
               </span>
-              {SUGGESTIONS.desires.filter(s => !(watch('desires') || []).includes(s)).slice(0, 10).map((suggestion) => (
+              {SUGGESTIONS.desires.filter(s => !desires.includes(s)).slice(0, 10).map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
@@ -588,9 +592,8 @@ export default function MarketResearchPage() {
                 </button>
               ))}
             </div>
-            {/* Selected items */}
             <div className="space-y-2">
-              {(watch('desires') || []).map((desire, index) => (
+              {desires.map((desire, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-3 bg-green-50 text-green-800 rounded-lg"
@@ -632,12 +635,11 @@ export default function MarketResearchPage() {
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
-            {/* Suggestion chips */}
             <div className="flex flex-wrap gap-1 mb-3">
               <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
                 <Lightbulb className="w-3 h-3" /> Quick add:
               </span>
-              {SUGGESTIONS.existingPurchases.filter(s => !(watch('existingPurchases') || []).includes(s)).slice(0, 10).map((suggestion) => (
+              {SUGGESTIONS.existingPurchases.filter(s => !existingPurchases.includes(s)).slice(0, 10).map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
@@ -648,9 +650,8 @@ export default function MarketResearchPage() {
                 </button>
               ))}
             </div>
-            {/* Selected items */}
             <div className="space-y-2">
-              {(watch('existingPurchases') || []).map((purchase, index) => (
+              {existingPurchases.map((purchase, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-3 bg-blue-50 text-blue-800 rounded-lg"
