@@ -3,89 +3,72 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Card, CardBody, CardHeader, Button, Input, Textarea, Spinner, Badge } from '@/components/ui';
 import { StageProgressTracker } from '@/components/workflow';
-import { ArrowLeft, Plus, X, CheckCircle, Palette, Video, FileVideo, User } from 'lucide-react';
-import { taskService, creativeService, projectService } from '@/services/api';
+import {
+  ArrowLeft,
+  Plus,
+  X,
+  CheckCircle,
+  Palette,
+  Video,
+  LayoutGrid,
+  Megaphone,
+  Target,
+  Users,
+  Repeat,
+  MessageSquare,
+  TrendingUp,
+  ShoppingBag,
+  Mail,
+  Zap,
+  GripVertical,
+  Eye,
+  Heart,
+  MousePointer,
+  Share2
+} from 'lucide-react';
+import { creativeService, projectService } from '@/services/api';
 
-// STATIC DATA MODE - Set to true for development, false for API calls
-const USE_STATIC_DATA = false;
-
-// Mock project data with landing page completed
-const STATIC_PROJECT = {
-  _id: 'static-project-1',
-  customerName: 'John Smith',
-  businessName: 'Acme Corporation',
-  email: 'john@acme.com',
-  mobile: '+1-555-0123',
-  currentStage: 6,
-  overallProgress: 83,
-  stages: {
-    onboarding: { isCompleted: true, completedAt: new Date() },
-    marketResearch: { isCompleted: true, completedAt: new Date() },
-    offerEngineering: { isCompleted: true, completedAt: new Date() },
-    trafficStrategy: { isCompleted: true, completedAt: new Date() },
-    landingPage: { isCompleted: true, completedAt: new Date() },
-    creativeStrategy: { isCompleted: false, completedAt: null }
-  },
-  status: 'active',
-  createdAt: new Date(),
-  updatedAt: new Date()
-};
-
-// Mock creative strategy data
-const STATIC_CREATIVE = {
-  stages: {
-    awareness: {
-      count: 2,
-      creatives: [
-        { name: 'Awareness Ad 1', creativeType: 'image', platform: 'facebook', status: 'approved', notes: 'Main brand awareness ad' },
-        { name: 'Awareness Video', creativeType: 'video', platform: 'youtube', status: 'in_progress', notes: '60-second brand story' }
-      ]
-    },
-    consideration: {
-      count: 1,
-      creatives: [
-        { name: 'Case Study', creativeType: 'carousel', platform: 'facebook', status: 'pending', notes: 'Success story carousel' }
-      ]
-    },
-    conversion: {
-      count: 1,
-      creatives: [
-        { name: 'Special Offer', creativeType: 'image', platform: 'instagram', status: 'pending', notes: 'Limited time offer' }
-      ]
-    }
-  },
-  creativeBrief: 'Focus on emotional storytelling and clear value propositions. Use brand colors: blue and gold.',
-  isCompleted: false
-};
-
-const STAGES = [
-  { id: 'awareness', label: 'Awareness', description: 'Create awareness about your brand/product' },
-  { id: 'consideration', label: 'Consideration', description: 'Engage interested prospects' },
-  { id: 'conversion', label: 'Conversion', description: 'Drive action and sales' },
+// Predefined ad types with icons
+const PREDEFINED_AD_TYPES = [
+  { key: 'awareness', label: 'Awareness Ads', icon: Eye, description: 'Build brand awareness and reach new audiences' },
+  { key: 'consideration', label: 'Consideration Ads', icon: Heart, description: 'Engage interested prospects' },
+  { key: 'conversion', label: 'Conversion Ads', icon: MousePointer, description: 'Drive action and sales' },
+  { key: 'retargeting', label: 'Retargeting Ads', icon: Repeat, description: 'Re-engage previous visitors' },
+  { key: 'lead_generation', label: 'Lead Generation Ads', icon: Users, description: 'Capture leads and contact info' },
 ];
 
-const CREATIVE_TYPES = [
-  { id: 'static_creative', label: 'Static Creative', icon: Palette, description: 'Images, graphics, designs' },
-  { id: 'video_creative', label: 'Video Creative', icon: Video, description: 'Video productions' },
-  { id: 'video_content', label: 'Video Content', icon: FileVideo, description: 'Scripts, storyboards' },
-];
-
+// Platform options
 const PLATFORMS = [
-  { id: 'facebook', label: 'Facebook' },
-  { id: 'instagram', label: 'Instagram' },
-  { id: 'youtube', label: 'YouTube' },
-  { id: 'linkedin', label: 'LinkedIn' },
-  { id: 'tiktok', label: 'TikTok' },
-  { id: 'twitter', label: 'Twitter' },
+  { key: 'facebook', label: 'Facebook' },
+  { key: 'instagram', label: 'Instagram' },
+  { key: 'youtube', label: 'YouTube' },
+  { key: 'google', label: 'Google' },
+  { key: 'linkedin', label: 'LinkedIn' },
+  { key: 'tiktok', label: 'TikTok' },
+  { key: 'twitter', label: 'Twitter' },
+  { key: 'whatsapp', label: 'WhatsApp' },
 ];
 
-const CREATIVE_STATUSES = [
-  { id: 'pending', label: 'Pending', color: 'bg-gray-100 text-gray-800' },
-  { id: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' },
-  { id: 'review', label: 'Review', color: 'bg-yellow-100 text-yellow-800' },
-  { id: 'approved', label: 'Approved', color: 'bg-green-100 text-green-800' },
-  { id: 'rejected', label: 'Rejected', color: 'bg-red-100 text-red-800' },
+// Available icons for custom ad types
+const AD_TYPE_ICONS = [
+  { key: 'Megaphone', icon: Megaphone },
+  { key: 'Target', icon: Target },
+  { key: 'Users', icon: Users },
+  { key: 'TrendingUp', icon: TrendingUp },
+  { key: 'ShoppingBag', icon: ShoppingBag },
+  { key: 'Mail', icon: Mail },
+  { key: 'Zap', icon: Zap },
+  { key: 'Share2', icon: Share2 },
 ];
+
+// Get icon component by name
+const getIconComponent = (iconName) => {
+  const iconMap = {
+    Eye, Heart, MousePointer, Repeat, Users, Megaphone, Target, TrendingUp,
+    ShoppingBag, Mail, Zap, Share2, Palette, Video, LayoutGrid
+  };
+  return iconMap[iconName] || Megaphone;
+};
 
 export default function CreativeStrategyPage() {
   const [searchParams] = useSearchParams();
@@ -95,44 +78,18 @@ export default function CreativeStrategyPage() {
   const [saving, setSaving] = useState(false);
   const [project, setProject] = useState(null);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [stages, setStages] = useState({
-    awareness: { count: 0, creatives: [] },
-    consideration: { count: 0, creatives: [] },
-    conversion: { count: 0, creatives: [] },
-  });
-  const [creativeBrief, setCreativeBrief] = useState('');
-  const [teamMembers, setTeamMembers] = useState({ contentWriters: [], designers: [] });
 
-  useEffect(() => {
-    if (!projectId) {
-      navigate('/projects');
-      return;
-    }
-    fetchData();
-    fetchTeamMembers();
-  }, [projectId]);
+  // Ad types state
+  const [selectedAdTypes, setSelectedAdTypes] = useState([]);
+  const [additionalNotes, setAdditionalNotes] = useState('');
 
-  const fetchTeamMembers = async () => {
-    try {
-      const res = await taskService.getTeamMembers();
-      setTeamMembers(res.data);
-    } catch (error) {
-      console.error('Failed to fetch team members:', error);
-      // Use mock data in static mode
-      if (USE_STATIC_DATA) {
-        setTeamMembers({
-          contentWriters: [
-            { _id: 'cw1', name: 'Sarah Writer', email: 'sarah@growthvalley.com' },
-            { _id: 'cw2', name: 'Mike Content', email: 'mike@growthvalley.com' }
-          ],
-          designers: [
-            { _id: 'd1', name: 'Alex Designer', email: 'alex@growthvalley.com' },
-            { _id: 'd2', name: 'Lisa Creative', email: 'lisa@growthvalley.com' }
-          ]
-        });
-      }
-    }
-  };
+  // Custom ad type form
+  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [customTypeName, setCustomTypeName] = useState('');
+  const [customTypeIcon, setCustomTypeIcon] = useState('Megaphone');
+
+  // Add ad type modal
+  const [showAdTypeModal, setShowAdTypeModal] = useState(false);
 
   useEffect(() => {
     if (!projectId) {
@@ -145,33 +102,66 @@ export default function CreativeStrategyPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const [projectRes, creativeRes] = await Promise.all([
+        projectService.getProject(projectId),
+        creativeService.get(projectId),
+      ]);
+      setProject(projectRes.data);
 
-      if (USE_STATIC_DATA) {
-        // Use static data for development
-        setProject(STATIC_PROJECT);
-        setStages(STATIC_CREATIVE.stages);
-        setCreativeBrief(STATIC_CREATIVE.creativeBrief);
-        setIsCompleted(STATIC_CREATIVE.isCompleted);
-      } else {
-        // Real API calls
-        const { projectService, creativeService } = await import('@/services/api');
-        const [projectRes, creativeRes] = await Promise.all([
-          projectService.getProject(projectId),
-          creativeService.get(projectId),
-        ]);
-        setProject(projectRes.data);
+      if (creativeRes.data) {
+        // Load ad types
+        if (creativeRes.data.adTypes && creativeRes.data.adTypes.length > 0) {
+          setSelectedAdTypes(creativeRes.data.adTypes.map(at => ({
+            typeKey: at.typeKey,
+            typeName: at.typeName,
+            isCustom: at.isCustom,
+            icon: at.icon || 'Megaphone',
+            creatives: at.creatives || {
+              imageCreatives: 0,
+              videoCreatives: 0,
+              carouselCreatives: 0,
+              messagingAngle: '',
+              hook: '',
+              headline: '',
+              cta: '',
+              platforms: [],
+              notes: ''
+            },
+            order: at.order || 0
+          })));
+        }
+        setAdditionalNotes(creativeRes.data.additionalNotes || '');
+        setIsCompleted(creativeRes.data.isCompleted);
 
-        if (creativeRes.data) {
-          const stageData = { awareness: { count: 0, creatives: [] }, consideration: { count: 0, creatives: [] }, conversion: { count: 0, creatives: [] } };
-          creativeRes.data.stages?.forEach(s => {
-            stageData[s.stage] = {
-              count: s.creatives?.length || 0,
-              creatives: s.creatives || [],
-            };
-          });
-          setStages(stageData);
-          setCreativeBrief(creativeRes.data.creativeBrief || '');
-          setIsCompleted(creativeRes.data.isCompleted);
+        // Legacy: Also check stages for backward compatibility
+        if (!creativeRes.data.adTypes?.length && creativeRes.data.stages) {
+          // Convert legacy stages to ad types
+          const legacyMapping = {
+            awareness: { key: 'awareness', label: 'Awareness Ads' },
+            consideration: { key: 'consideration', label: 'Consideration Ads' },
+            conversion: { key: 'conversion', label: 'Conversion Ads' }
+          };
+          const convertedAdTypes = creativeRes.data.stages
+            .filter(s => s.creatives && s.creatives.length > 0)
+            .map(s => ({
+              typeKey: legacyMapping[s.stage]?.key || s.stage,
+              typeName: legacyMapping[s.stage]?.label || s.stage,
+              isCustom: false,
+              icon: s.stage === 'awareness' ? 'Eye' : s.stage === 'consideration' ? 'Heart' : 'MousePointer',
+              creatives: {
+                imageCreatives: s.creatives.filter(c => c.creativeType === 'static_creative').length || 0,
+                videoCreatives: s.creatives.filter(c => c.creativeType === 'video_creative').length || 0,
+                carouselCreatives: s.creatives.filter(c => c.creativeType === 'carousel').length || 0,
+                messagingAngle: '',
+                hook: '',
+                headline: '',
+                cta: '',
+                platforms: [],
+                notes: ''
+              },
+              order: 0
+            }));
+          setSelectedAdTypes(convertedAdTypes);
         }
       }
     } catch (error) {
@@ -184,101 +174,151 @@ export default function CreativeStrategyPage() {
     }
   };
 
-  const generateCreatives = (stageId) => {
-    const count = stages[stageId].count;
-    if (count <= 0) return;
+  const handleAddPredefinedAdType = (adType) => {
+    if (selectedAdTypes.find(at => at.typeKey === adType.key)) {
+      toast.error('This ad type is already added');
+      return;
+    }
+    setSelectedAdTypes([
+      ...selectedAdTypes,
+      {
+        typeKey: adType.key,
+        typeName: adType.label,
+        isCustom: false,
+        icon: adType.key === 'awareness' ? 'Eye' : adType.key === 'consideration' ? 'Heart' : adType.key === 'conversion' ? 'MousePointer' : adType.key === 'retargeting' ? 'Repeat' : 'Users',
+        creatives: {
+          imageCreatives: 0,
+          videoCreatives: 0,
+          carouselCreatives: 0,
+          messagingAngle: '',
+          hook: '',
+          headline: '',
+          cta: '',
+          platforms: [],
+          notes: ''
+        },
+        order: selectedAdTypes.length
+      }
+    ]);
+    setShowAdTypeModal(false);
+    toast.success(`Added ${adType.label}`);
+  };
 
-    // Generate placeholder creatives
-    const newCreatives = Array.from({ length: count }, (_, i) => ({
-      name: `${stageId.charAt(0).toUpperCase() + stageId.slice(1)} Creative ${i + 1}`,
-      creativeType: 'static_creative',
-      platform: 'facebook',
-      status: 'pending',
-      contentStatus: 'pending',
-      designStatus: 'pending',
+  const handleAddCustomAdType = () => {
+    if (!customTypeName.trim()) {
+      toast.error('Please enter an ad type name');
+      return;
+    }
+
+    const typeKey = customTypeName.toLowerCase().replace(/\s+/g, '_') + '_custom';
+    if (selectedAdTypes.find(at => at.typeKey === typeKey)) {
+      toast.error('This ad type name is already used');
+      return;
+    }
+
+    setSelectedAdTypes([
+      ...selectedAdTypes,
+      {
+        typeKey,
+        typeName: customTypeName.trim(),
+        isCustom: true,
+        icon: customTypeIcon,
+        creatives: {
+          imageCreatives: 0,
+          videoCreatives: 0,
+          carouselCreatives: 0,
+          messagingAngle: '',
+          hook: '',
+          headline: '',
+          cta: '',
+          platforms: [],
+          notes: ''
+        },
+        order: selectedAdTypes.length
+      }
+    ]);
+    setCustomTypeName('');
+    setCustomTypeIcon('Megaphone');
+    setShowCustomForm(false);
+    setShowAdTypeModal(false);
+    toast.success(`Added custom ad type: ${customTypeName}`);
+  };
+
+  const handleRemoveAdType = (typeKey) => {
+    setSelectedAdTypes(selectedAdTypes.filter(at => at.typeKey !== typeKey));
+    toast.success('Ad type removed');
+  };
+
+  const handleUpdateAdType = (typeKey, field, value) => {
+    setSelectedAdTypes(selectedAdTypes.map(at => {
+      if (at.typeKey === typeKey) {
+        return {
+          ...at,
+          creatives: {
+            ...at.creatives,
+            [field]: value
+          }
+        };
+      }
+      return at;
     }));
-
-    setStages({
-      ...stages,
-      [stageId]: { count, creatives: newCreatives },
-    });
   };
 
-  const updateCreative = (stageId, index, field, value) => {
-    const newStages = { ...stages };
-    newStages[stageId].creatives[index][field] = value;
-    setStages(newStages);
-  };
-
-  const addCreative = (stageId) => {
-    const newStages = { ...stages };
-    newStages[stageId].creatives.push({
-      name: `${stageId.charAt(0).toUpperCase() + stageId.slice(1)} Creative ${newStages[stageId].creatives.length + 1}`,
-      creativeType: 'static_creative',
-      platform: 'facebook',
-      status: 'pending',
-      contentStatus: 'pending',
-      designStatus: 'pending',
-    });
-    setStages(newStages);
-  };
-
-  const removeCreative = (stageId, index) => {
-    const newStages = { ...stages };
-    newStages[stageId].creatives.splice(index, 1);
-    setStages(newStages);
+  const handlePlatformToggle = (typeKey, platformKey) => {
+    setSelectedAdTypes(selectedAdTypes.map(at => {
+      if (at.typeKey === typeKey) {
+        const platforms = at.creatives.platforms || [];
+        const newPlatforms = platforms.includes(platformKey)
+          ? platforms.filter(p => p !== platformKey)
+          : [...platforms, platformKey];
+        return {
+          ...at,
+          creatives: {
+            ...at.creatives,
+            platforms: newPlatforms
+          }
+        };
+      }
+      return at;
+    }));
   };
 
   const onSubmit = async (markComplete = false) => {
     try {
       setSaving(true);
 
-      if (USE_STATIC_DATA) {
-        // Static mode - simulate save
-        await new Promise(resolve => setTimeout(resolve, 500));
-        if (markComplete) {
-          setIsCompleted(true);
-          setProject(prev => ({
-            ...prev,
-            stages: {
-              ...prev.stages,
-              creativeStrategy: { isCompleted: true, completedAt: new Date() }
-            },
-            currentStage: 6,
-            overallProgress: 100
-          }));
-          toast.success('Creative strategy completed! Project is now complete!');
-          setTimeout(() => {
-            navigate(`/projects/${projectId}`);
-          }, 1500);
-        } else {
-          toast.success('Progress saved!');
-        }
-      } else {
-        // Real API call
-        const { creativeService } = await import('@/services/api');
-        const stagesData = Object.entries(stages).map(([stage, data]) => ({
-          stage,
-          creatives: data.creatives,
-          totalCreatives: data.creatives.length,
-        }));
+      // Prepare data for API
+      const adTypesData = selectedAdTypes.map(at => ({
+        typeKey: at.typeKey,
+        typeName: at.typeName,
+        isCustom: at.isCustom,
+        icon: at.icon,
+        creatives: at.creatives,
+        order: at.order
+      }));
 
-        await creativeService.upsert(projectId, {
-          stages: stagesData,
-          creativeBrief,
-          isCompleted: markComplete,
-        });
-        toast.success(markComplete ? 'Creative strategy completed!' : 'Progress saved!');
-        if (markComplete) {
-          navigate(`/projects/${projectId}`);
-        }
+      await creativeService.upsert(projectId, {
+        adTypes: adTypesData,
+        additionalNotes,
+        isCompleted: markComplete,
+      });
+
+      toast.success(markComplete ? 'Creative strategy completed!' : 'Progress saved!');
+
+      if (markComplete) {
+        navigate(`/projects/${projectId}`);
       }
     } catch (error) {
-      toast.error(error.message || 'Failed to save creative strategy');
+      toast.error(error.response?.data?.message || 'Failed to save creative strategy');
     } finally {
       setSaving(false);
     }
   };
+
+  // Calculate total creatives
+  const totalCreatives = selectedAdTypes.reduce((sum, at) => {
+    return sum + (at.creatives.imageCreatives || 0) + (at.creatives.videoCreatives || 0) + (at.creatives.carouselCreatives || 0);
+  }, 0);
 
   if (loading) {
     return (
@@ -288,11 +328,13 @@ export default function CreativeStrategyPage() {
     );
   }
 
-  // Calculate total creatives
-  const totalCreatives = Object.values(stages).reduce((sum, stage) => sum + stage.creatives.length, 0);
+  // Get available predefined ad types (not yet selected)
+  const availablePredefinedTypes = PREDEFINED_AD_TYPES.filter(
+    pt => !selectedAdTypes.find(at => at.typeKey === pt.key)
+  );
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" onClick={() => navigate(`/projects/${projectId}`)} className="p-2">
@@ -300,7 +342,7 @@ export default function CreativeStrategyPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">Creative Strategy</h1>
-          <p className="text-gray-600 mt-1">{project?.businessName}</p>
+          <p className="text-gray-600 mt-1">{project?.businessName || project?.projectName}</p>
         </div>
         <div className="text-right">
           <div className="text-sm text-gray-500">Total Creatives</div>
@@ -313,8 +355,8 @@ export default function CreativeStrategyPage() {
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
           <CheckCircle className="w-6 h-6 text-green-500" />
           <div>
-            <h3 className="font-semibold text-green-800">Project Completed!</h3>
-            <p className="text-sm text-green-600">All stages have been completed successfully.</p>
+            <h3 className="font-semibold text-green-800">Creative Strategy Completed!</h3>
+            <p className="text-sm text-green-600">All creative strategy details have been saved.</p>
           </div>
         </div>
       )}
@@ -326,204 +368,244 @@ export default function CreativeStrategyPage() {
         </CardBody>
       </Card>
 
-      {/* Creative Brief */}
+      {/* Ad Types Selection */}
       <Card>
         <CardHeader>
-          <h2 className="text-lg font-semibold text-gray-900">Creative Brief</h2>
-          <p className="text-sm text-gray-500">Define your overall creative direction</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Ad Types</h2>
+              <p className="text-sm text-gray-500">Select predefined ad types or add custom ones</p>
+            </div>
+            <Button onClick={() => setShowAdTypeModal(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Ad Type
+            </Button>
+          </div>
         </CardHeader>
         <CardBody>
-          <Textarea
-            placeholder="Describe your creative strategy, brand guidelines, and key messaging..."
-            rows={4}
-            value={creativeBrief}
-            onChange={(e) => setCreativeBrief(e.target.value)}
-          />
-        </CardBody>
-      </Card>
-
-      {/* Stages */}
-      {STAGES.map((stage) => (
-        <Card key={stage.id}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">{stage.label}</h2>
-                <p className="text-sm text-gray-500">{stage.description}</p>
-              </div>
-              <Button variant="secondary" size="sm" onClick={() => addCreative(stage.id)}>
-                <Plus className="w-4 h-4 mr-1" />
-                Add Creative
+          {selectedAdTypes.length === 0 ? (
+            <div className="text-center py-12">
+              <LayoutGrid className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Ad Types Selected</h3>
+              <p className="text-gray-500 mb-4">Start by adding ad types for your creative strategy</p>
+              <Button onClick={() => setShowAdTypeModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Your First Ad Type
               </Button>
             </div>
-          </CardHeader>
-          <CardBody>
-            {stages[stage.id].creatives.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">No creatives added yet for this stage</p>
-                <div className="flex items-center justify-center gap-4">
-                  <Input
-                    type="number"
-                    placeholder="Number of creatives"
-                    value={stages[stage.id].count}
-                    onChange={(e) => setStages({
-                      ...stages,
-                      [stage.id]: { ...stages[stage.id], count: Number(e.target.value) },
-                    })}
-                    className="w-32"
-                    min="0"
-                  />
-                  <Button onClick={() => generateCreatives(stage.id)}>
-                    Generate Cards
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {stages[stage.id].creatives.map((creative, index) => (
-                  <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <Input
-                        value={creative.name}
-                        onChange={(e) => updateCreative(stage.id, index, 'name', e.target.value)}
-                        className="max-w-xs font-medium"
-                      />
+          ) : (
+            <div className="space-y-4">
+              {selectedAdTypes.map((adType, index) => {
+                const IconComponent = getIconComponent(adType.icon);
+                return (
+                  <div key={adType.typeKey} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary-100 rounded-lg">
+                          <IconComponent className="w-5 h-5 text-primary-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{adType.typeName}</h3>
+                          {adType.isCustom && (
+                            <Badge variant="info" className="text-xs">Custom</Badge>
+                          )}
+                        </div>
+                      </div>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeCreative(stage.id, index)}
+                        onClick={() => handleRemoveAdType(adType.typeKey)}
+                        className="text-red-500 hover:text-red-700"
                       >
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
 
-                    {/* Task Status Badges */}
-                    <div className="flex gap-2 mb-3">
-                      {creative.contentStatus && (
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          creative.contentStatus === 'completed' ? 'bg-green-100 text-green-800' :
-                          creative.contentStatus === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                          creative.contentStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          Content: {creative.contentStatus}
-                        </span>
-                      )}
-                      {creative.designStatus && (
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          creative.designStatus === 'completed' ? 'bg-green-100 text-green-800' :
-                          creative.designStatus === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                          creative.designStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          Design: {creative.designStatus}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Creative Counts */}
+                    <div className="grid grid-cols-3 gap-4 mb-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                        <select
-                          value={creative.creativeType}
-                          onChange={(e) => updateCreative(stage.id, index, 'creativeType', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        >
-                          {CREATIVE_TYPES.map((type) => (
-                            <option key={type.id} value={type.id}>{type.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
-                        <select
-                          value={creative.platform}
-                          onChange={(e) => updateCreative(stage.id, index, 'platform', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        >
-                          {PLATFORMS.map((platform) => (
-                            <option key={platform.id} value={platform.id}>{platform.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select
-                          value={creative.status}
-                          onChange={(e) => updateCreative(stage.id, index, 'status', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        >
-                          {CREATIVE_STATUSES.map((status) => (
-                            <option key={status.id} value={status.id}>{status.label}</option>
-                          ))}
-                        </select>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <Palette className="w-4 h-4 inline mr-1" />
+                          Image Creatives
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={adType.creatives.imageCreatives || 0}
+                          onChange={(e) => handleUpdateAdType(adType.typeKey, 'imageCreatives', parseInt(e.target.value) || 0)}
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          <User className="w-4 h-4 inline mr-1" />
-                          Content Writer
+                          <Video className="w-4 h-4 inline mr-1" />
+                          Video Creatives
                         </label>
-                        <select
-                          value={creative.assignedContentWriter?._id || creative.assignedContentWriter || ''}
-                          onChange={(e) => updateCreative(stage.id, index, 'assignedContentWriter', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        >
-                          <option value="">Select Content Writer</option>
-                          {teamMembers.contentWriters?.map((writer) => (
-                            <option key={writer._id} value={writer._id}>
-                              {writer.name}
-                            </option>
-                          ))}
-                        </select>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={adType.creatives.videoCreatives || 0}
+                          onChange={(e) => handleUpdateAdType(adType.typeKey, 'videoCreatives', parseInt(e.target.value) || 0)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <LayoutGrid className="w-4 h-4 inline mr-1" />
+                          Carousel Creatives
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={adType.creatives.carouselCreatives || 0}
+                          onChange={(e) => handleUpdateAdType(adType.typeKey, 'carouselCreatives', parseInt(e.target.value) || 0)}
+                        />
                       </div>
                     </div>
-                    <div className="mt-3">
+
+                    {/* Platforms */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Platforms</label>
+                      <div className="flex flex-wrap gap-2">
+                        {PLATFORMS.map(platform => (
+                          <button
+                            key={platform.key}
+                            type="button"
+                            onClick={() => handlePlatformToggle(adType.typeKey, platform.key)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                              adType.creatives.platforms?.includes(platform.key)
+                                ? 'bg-primary-100 text-primary-700 border-primary-300'
+                                : 'bg-gray-100 text-gray-600 border-gray-200'
+                            } border`}
+                          >
+                            {platform.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Messaging Angle */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <MessageSquare className="w-4 h-4 inline mr-1" />
+                        Messaging Angle
+                      </label>
                       <Textarea
-                        placeholder="Notes or description..."
+                        placeholder="Describe the key messaging angle for this ad type..."
                         rows={2}
-                        value={creative.notes || ''}
-                        onChange={(e) => updateCreative(stage.id, index, 'notes', e.target.value)}
+                        value={adType.creatives.messagingAngle || ''}
+                        onChange={(e) => handleUpdateAdType(adType.typeKey, 'messagingAngle', e.target.value)}
                       />
                     </div>
 
-                    {/* Content Output Preview */}
-                    {creative.contentOutput && (creative.contentOutput.headline || creative.contentOutput.bodyText) && (
-                      <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-                        <h4 className="text-sm font-medium text-blue-800 mb-2">Content Output</h4>
-                        {creative.contentOutput.headline && (
-                          <p className="text-sm font-semibold">{creative.contentOutput.headline}</p>
-                        )}
-                        {creative.contentOutput.bodyText && (
-                          <p className="text-sm text-gray-600 mt-1">{creative.contentOutput.bodyText}</p>
-                        )}
+                    {/* Hook & CTA */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Hook / Headline
+                        </label>
+                        <Input
+                          placeholder="Attention-grabbing hook..."
+                          value={adType.creatives.hook || ''}
+                          onChange={(e) => handleUpdateAdType(adType.typeKey, 'hook', e.target.value)}
+                        />
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardBody>
-        </Card>
-      ))}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          CTA (Call to Action)
+                        </label>
+                        <Input
+                          placeholder="e.g., Shop Now, Learn More..."
+                          value={adType.creatives.cta || ''}
+                          onChange={(e) => handleUpdateAdType(adType.typeKey, 'cta', e.target.value)}
+                        />
+                      </div>
+                    </div>
 
-      {/* Summary */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold text-gray-900">Summary</h2>
-        </CardHeader>
-        <CardBody>
-          <div className="grid grid-cols-3 gap-4">
-            {STAGES.map((stage) => (
-              <div key={stage.id} className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className="text-3xl font-bold text-primary-600">
-                  {stages[stage.id].creatives.length}
-                </div>
-                <div className="text-sm text-gray-600">{stage.label} Creatives</div>
-              </div>
-            ))}
-          </div>
+                    {/* Notes */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Additional Notes
+                      </label>
+                      <Textarea
+                        placeholder="Any specific instructions for this ad type..."
+                        rows={2}
+                        value={adType.creatives.notes || ''}
+                        onChange={(e) => handleUpdateAdType(adType.typeKey, 'notes', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardBody>
       </Card>
+
+      {/* Additional Notes Section */}
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold text-gray-900">Additional Creative Instructions</h2>
+          <p className="text-sm text-gray-500">Describe overall creative direction and special instructions</p>
+        </CardHeader>
+        <CardBody>
+          <Textarea
+            placeholder="e.g., Use emotional storytelling for awareness ads and strong CTA for conversion ads. Maintain brand voice across all creatives..."
+            rows={5}
+            value={additionalNotes}
+            onChange={(e) => setAdditionalNotes(e.target.value)}
+          />
+        </CardBody>
+      </Card>
+
+      {/* Summary */}
+      {selectedAdTypes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold text-gray-900">Creative Summary</h2>
+          </CardHeader>
+          <CardBody>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-3xl font-bold text-primary-600">{selectedAdTypes.length}</div>
+                <div className="text-sm text-gray-600">Ad Types</div>
+              </div>
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-3xl font-bold text-blue-600">
+                  {selectedAdTypes.reduce((sum, at) => sum + (at.creatives.imageCreatives || 0), 0)}
+                </div>
+                <div className="text-sm text-gray-600">Image Creatives</div>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <div className="text-3xl font-bold text-purple-600">
+                  {selectedAdTypes.reduce((sum, at) => sum + (at.creatives.videoCreatives || 0), 0)}
+                </div>
+                <div className="text-sm text-gray-600">Video Creatives</div>
+              </div>
+              <div className="text-center p-4 bg-orange-50 rounded-lg">
+                <div className="text-3xl font-bold text-orange-600">
+                  {selectedAdTypes.reduce((sum, at) => sum + (at.creatives.carouselCreatives || 0), 0)}
+                </div>
+                <div className="text-sm text-gray-600">Carousel Creatives</div>
+              </div>
+            </div>
+
+            {/* Platform Distribution */}
+            <div className="mt-4 pt-4 border-t">
+              <h4 className="font-medium text-gray-700 mb-2">Platforms Selected:</h4>
+              <div className="flex flex-wrap gap-2">
+                {selectedAdTypes.flatMap(at => at.creatives.platforms || []).length > 0 ? (
+                  [...new Set(selectedAdTypes.flatMap(at => at.creatives.platforms || []))].map(platform => (
+                    <Badge key={platform} variant="secondary">
+                      {PLATFORMS.find(p => p.key === platform)?.label || platform}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-gray-500 text-sm">No platforms selected yet</span>
+                )}
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      )}
 
       {/* Actions */}
       <div className="flex justify-end gap-4">
@@ -532,9 +614,9 @@ export default function CreativeStrategyPage() {
             <Button variant="secondary" onClick={() => onSubmit(false)} loading={saving}>
               Save Progress
             </Button>
-            <Button onClick={() => onSubmit(true)} loading={saving}>
+            <Button onClick={() => onSubmit(true)} loading={saving} disabled={selectedAdTypes.length === 0}>
               <CheckCircle className="w-4 h-4 mr-2" />
-              Complete Project
+              Complete & Continue
             </Button>
           </>
         ) : (
@@ -544,6 +626,126 @@ export default function CreativeStrategyPage() {
           </Button>
         )}
       </div>
+
+      {/* Ad Type Selection Modal */}
+      {showAdTypeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">Add Ad Type</h2>
+                <Button variant="ghost" onClick={() => {
+                  setShowAdTypeModal(false);
+                  setShowCustomForm(false);
+                }}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              {!showCustomForm ? (
+                <>
+                  {/* Predefined Ad Types */}
+                  {availablePredefinedTypes.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-sm font-medium text-gray-700 mb-3">Predefined Ad Types</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {availablePredefinedTypes.map(adType => {
+                          const IconComponent = adType.icon;
+                          return (
+                            <button
+                              key={adType.key}
+                              onClick={() => handleAddPredefinedAdType(adType)}
+                              className="flex items-start gap-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left"
+                            >
+                              <div className="p-2 bg-primary-100 rounded-lg">
+                                <IconComponent className="w-5 h-5 text-primary-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900">{adType.label}</div>
+                                <div className="text-sm text-gray-500">{adType.description}</div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Divider */}
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-200"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-white text-gray-500">Or create custom</span>
+                    </div>
+                  </div>
+
+                  {/* Custom Ad Type Form Toggle */}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowCustomForm(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Custom Ad Type
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {/* Custom Ad Type Form */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Ad Type Name
+                      </label>
+                      <Input
+                        placeholder="e.g., Influencer Ads, WhatsApp Campaign..."
+                        value={customTypeName}
+                        onChange={(e) => setCustomTypeName(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Icon
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {AD_TYPE_ICONS.map(iconOption => {
+                          const IconComp = iconOption.icon;
+                          return (
+                            <button
+                              key={iconOption.key}
+                              type="button"
+                              onClick={() => setCustomTypeIcon(iconOption.key)}
+                              className={`p-3 rounded-lg border-2 transition-colors ${
+                                customTypeIcon === iconOption.key
+                                  ? 'border-primary-500 bg-primary-50'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <IconComp className="w-5 h-5" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <Button variant="secondary" onClick={() => setShowCustomForm(false)}>
+                        Back
+                      </Button>
+                      <Button onClick={handleAddCustomAdType}>
+                        Add Custom Ad Type
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -23,7 +23,12 @@ exports.checkStageAccess = (stageKey) => {
         });
       }
 
-      const project = await Project.findById(projectId);
+      const project = await Project.findById(projectId)
+        .populate('assignedTeam.performanceMarketer', '_id')
+        .populate('assignedTeam.uiUxDesigner', '_id')
+        .populate('assignedTeam.graphicDesigner', '_id')
+        .populate('assignedTeam.developer', '_id')
+        .populate('assignedTeam.tester', '_id');
 
       if (!project) {
         return res.status(404).json({
@@ -32,8 +37,16 @@ exports.checkStageAccess = (stageKey) => {
         });
       }
 
-      // Check if user has access to this project
-      if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
+      // Check if user has access to this project (admin, creator, or assigned team member)
+      const userId = req.user._id.toString();
+      const isAssigned =
+        project.assignedTeam.performanceMarketer?._id?.toString() === userId ||
+        project.assignedTeam.uiUxDesigner?._id?.toString() === userId ||
+        project.assignedTeam.graphicDesigner?._id?.toString() === userId ||
+        project.assignedTeam.developer?._id?.toString() === userId ||
+        project.assignedTeam.tester?._id?.toString() === userId;
+
+      if (req.user.role !== 'admin' && project.createdBy.toString() !== userId && !isAssigned) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to access this project'

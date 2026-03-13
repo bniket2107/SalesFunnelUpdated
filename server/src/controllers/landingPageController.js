@@ -1,6 +1,26 @@
 const LandingPage = require('../models/LandingPage');
 const Project = require('../models/Project');
 const { completeStage, getStageStatus } = require('../middleware/stageGating');
+const { hasProjectAccess } = require('../utils/auth');
+
+const checkProjectAccess = async (projectId, user) => {
+  const project = await Project.findById(projectId)
+    .populate('assignedTeam.performanceMarketer', '_id')
+    .populate('assignedTeam.uiUxDesigner', '_id')
+    .populate('assignedTeam.graphicDesigner', '_id')
+    .populate('assignedTeam.developer', '_id')
+    .populate('assignedTeam.tester', '_id');
+
+  if (!project) {
+    return { project: null, error: { status: 404, message: 'Project not found' } };
+  }
+
+  if (!hasProjectAccess(project, user)) {
+    return { project: null, error: { status: 403, message: 'Not authorized to access this project' } };
+  }
+
+  return { project, error: null };
+};
 
 // @desc    Get landing page strategy for a project
 // @route   GET /api/landing-pages/:projectId
@@ -9,20 +29,11 @@ exports.getLandingPage = async (req, res, next) => {
   try {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -63,20 +74,11 @@ exports.upsertLandingPage = async (req, res, next) => {
   try {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -158,20 +160,11 @@ exports.addNurturing = async (req, res, next) => {
     const { projectId } = req.params;
     const { method, frequency } = req.body;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -203,20 +196,11 @@ exports.removeNurturing = async (req, res, next) => {
   try {
     const { projectId, nurturingId } = req.params;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 

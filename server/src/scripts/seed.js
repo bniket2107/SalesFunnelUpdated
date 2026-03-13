@@ -125,19 +125,36 @@ const seedProjects = [
 
 const seedDatabase = async () => {
   try {
-    const uri = process.env.MONGODB_URI;
+    const atlasUri = process.env.MONGODB_URI;
+    const localUri = 'mongodb://localhost:27017/growth-valley';
 
-    if (!uri) {
-      console.error('MONGODB_URI environment variable is not defined');
-      process.exit(1);
+    // Try Atlas first, then fall back to local MongoDB (same as database.js)
+    const uris = atlasUri ? [atlasUri, localUri] : [localUri];
+
+    let connected = false;
+    for (const uri of uris) {
+      try {
+        await mongoose.connect(uri, {
+          useNewUrlParser: true,
+          useUnifiedTopology: true,
+        });
+        const isAtlas = uri.includes('mongodb+srv');
+        console.log(`Connected to ${isAtlas ? 'MongoDB Atlas' : 'Local MongoDB'}`);
+        connected = true;
+        break;
+      } catch (error) {
+        const isAtlas = uri.includes('mongodb+srv');
+        console.log(`Failed to connect to ${isAtlas ? 'MongoDB Atlas' : 'Local MongoDB'}: ${error.message}`);
+        if (isAtlas) {
+          console.log('Trying local MongoDB as fallback...');
+        }
+      }
     }
 
-    await mongoose.connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-
-    console.log('Connected to MongoDB');
+    if (!connected) {
+      console.error('Could not connect to any MongoDB instance');
+      process.exit(1);
+    }
 
     // Clear existing data
     await User.deleteMany({});

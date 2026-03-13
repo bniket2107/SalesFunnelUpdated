@@ -1,6 +1,27 @@
 const MarketResearch = require('../models/MarketResearch');
 const Project = require('../models/Project');
 const { completeStage, getStageStatus } = require('../middleware/stageGating');
+const { hasProjectAccess } = require('../utils/auth');
+
+// Helper to check project access and populate team
+const checkProjectAccess = async (projectId, user) => {
+  const project = await Project.findById(projectId)
+    .populate('assignedTeam.performanceMarketer', '_id')
+    .populate('assignedTeam.uiUxDesigner', '_id')
+    .populate('assignedTeam.graphicDesigner', '_id')
+    .populate('assignedTeam.developer', '_id')
+    .populate('assignedTeam.tester', '_id');
+
+  if (!project) {
+    return { project: null, error: { status: 404, message: 'Project not found' } };
+  }
+
+  if (!hasProjectAccess(project, user)) {
+    return { project: null, error: { status: 403, message: 'Not authorized to access this project' } };
+  }
+
+  return { project, error: null };
+};
 
 // @desc    Get market research for a project
 // @route   GET /api/market-research/:projectId
@@ -9,20 +30,11 @@ exports.getMarketResearch = async (req, res, next) => {
   try {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -55,20 +67,11 @@ exports.upsertMarketResearch = async (req, res, next) => {
   try {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -154,20 +157,11 @@ exports.uploadVisionBoard = async (req, res, next) => {
       });
     }
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -206,20 +200,11 @@ exports.uploadStrategySheet = async (req, res, next) => {
       });
     }
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 

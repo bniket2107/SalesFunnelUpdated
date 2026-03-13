@@ -138,11 +138,11 @@ exports.getProject = async (req, res, next) => {
     // Check access - admin, creator, or assigned team member
     const userId = req.user._id.toString();
     const isAssigned =
-      project.assignedTeam.performanceMarketer?.toString() === userId ||
-      project.assignedTeam.uiUxDesigner?.toString() === userId ||
-      project.assignedTeam.graphicDesigner?.toString() === userId ||
-      project.assignedTeam.developer?.toString() === userId ||
-      project.assignedTeam.tester?.toString() === userId;
+      project.assignedTeam.performanceMarketer?._id?.toString() === userId ||
+      project.assignedTeam.uiUxDesigner?._id?.toString() === userId ||
+      project.assignedTeam.graphicDesigner?._id?.toString() === userId ||
+      project.assignedTeam.developer?._id?.toString() === userId ||
+      project.assignedTeam.tester?._id?.toString() === userId;
 
     if (req.user.role !== 'admin' && project.createdBy._id.toString() !== userId && !isAssigned) {
       return res.status(403).json({
@@ -467,11 +467,11 @@ exports.uploadAssets = async (req, res, next) => {
     // Check access
     const userId = req.user._id.toString();
     const isAssigned =
-      project.assignedTeam.performanceMarketer?.toString() === userId ||
-      project.assignedTeam.uiUxDesigner?.toString() === userId ||
-      project.assignedTeam.graphicDesigner?.toString() === userId ||
-      project.assignedTeam.developer?.toString() === userId ||
-      project.assignedTeam.tester?.toString() === userId;
+      project.assignedTeam.performanceMarketer?._id?.toString() === userId ||
+      project.assignedTeam.uiUxDesigner?._id?.toString() === userId ||
+      project.assignedTeam.graphicDesigner?._id?.toString() === userId ||
+      project.assignedTeam.developer?._id?.toString() === userId ||
+      project.assignedTeam.tester?._id?.toString() === userId;
 
     if (req.user.role !== 'admin' && project.createdBy.toString() !== userId && !isAssigned) {
       return res.status(403).json({

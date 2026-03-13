@@ -139,6 +139,11 @@ export const creativeService = {
     api.put(`/creatives/${projectId}/stages/${stage}/creatives/${creativeId}`, data),
   deleteCreative: (projectId, stage, creativeId) =>
     api.delete(`/creatives/${projectId}/stages/${stage}/creatives/${creativeId}`),
+  // Ad Type methods
+  addAdType: (projectId, data) => api.post(`/creatives/${projectId}/ad-types`, data),
+  updateAdType: (projectId, typeKey, data) => api.put(`/creatives/${projectId}/ad-types/${typeKey}`, data),
+  removeAdType: (projectId, typeKey) => api.delete(`/creatives/${projectId}/ad-types/${typeKey}`),
+  updateNotes: (projectId, data) => api.put(`/creatives/${projectId}/notes`, data),
 };
 
 // Task service

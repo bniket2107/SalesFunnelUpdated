@@ -2,6 +2,26 @@ const CreativeStrategy = require('../models/Creative');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
 const { completeStage, getStageStatus } = require('../middleware/stageGating');
+const { hasProjectAccess } = require('../utils/auth');
+
+const checkProjectAccess = async (projectId, user) => {
+  const project = await Project.findById(projectId)
+    .populate('assignedTeam.performanceMarketer', '_id')
+    .populate('assignedTeam.uiUxDesigner', '_id')
+    .populate('assignedTeam.graphicDesigner', '_id')
+    .populate('assignedTeam.developer', '_id')
+    .populate('assignedTeam.tester', '_id');
+
+  if (!project) {
+    return { project: null, error: { status: 404, message: 'Project not found' } };
+  }
+
+  if (!hasProjectAccess(project, user)) {
+    return { project: null, error: { status: 403, message: 'Not authorized to access this project' } };
+  }
+
+  return { project, error: null };
+};
 
 // @desc    Get creative strategy for a project
 // @route   GET /api/creatives/:projectId
@@ -10,20 +30,11 @@ exports.getCreativeStrategy = async (req, res, next) => {
   try {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -71,20 +82,11 @@ exports.upsertCreativeStrategy = async (req, res, next) => {
   try {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -164,20 +166,11 @@ exports.addCreative = async (req, res, next) => {
     const { projectId, stage } = req.params;
     const { name, creativeType, platform, dimensions, copy, notes, assignedDesigner, assignedContentWriter, dueDate } = req.body;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -291,20 +284,11 @@ exports.updateCreative = async (req, res, next) => {
     const { projectId, stage, creativeId } = req.params;
     const { name, creativeType, platform, dimensions, copy, notes, assignedDesigner, assignedContentWriter, dueDate, status, contentStatus, designStatus, contentOutput } = req.body;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -381,20 +365,11 @@ exports.deleteCreative = async (req, res, next) => {
   try {
     const { projectId, stage, creativeId } = req.params;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -442,20 +417,11 @@ exports.generateCreativeCards = async (req, res, next) => {
     const { projectId } = req.params;
     const { awarenessCount, considerationCount, conversionCount } = req.body;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
         success: false,
-        message: 'Project not found'
-      });
-    }
-
-    // Check ownership
-    if (req.user.role !== 'admin' && project.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to access this project'
+        message: error.message
       });
     }
 
@@ -505,6 +471,244 @@ exports.generateCreativeCards = async (req, res, next) => {
       success: true,
       data: creativeStrategy,
       message: `Generated ${creativeStrategy.totalCreatives} creative cards`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Add ad type to creative strategy
+// @route   POST /api/creatives/:projectId/ad-types
+// @access  Private
+exports.addAdType = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { typeKey, typeName, isCustom } = req.body;
+
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    let creativeStrategy = await CreativeStrategy.findOne({ projectId });
+
+    if (!creativeStrategy) {
+      creativeStrategy = await CreativeStrategy.create({
+        projectId,
+        adTypes: [],
+        stages: [
+          { stage: 'awareness', creatives: [], totalCreatives: 0 },
+          { stage: 'consideration', creatives: [], totalCreatives: 0 },
+          { stage: 'conversion', creatives: [], totalCreatives: 0 }
+        ],
+        createdBy: req.user._id
+      });
+    }
+
+    // Check if ad type already exists
+    const existingAdType = creativeStrategy.adTypes.find(
+      at => at.typeKey === typeKey
+    );
+
+    if (existingAdType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ad type already exists in the strategy'
+      });
+    }
+
+    // Add new ad type
+    creativeStrategy.adTypes.push({
+      typeKey,
+      typeName,
+      isCustom: isCustom || false,
+      creatives: {
+        imageCreatives: 0,
+        videoCreatives: 0,
+        carouselCreatives: 0,
+        messagingAngle: '',
+        hook: '',
+        headline: '',
+        cta: '',
+        platforms: [],
+        notes: ''
+      },
+      order: creativeStrategy.adTypes.length
+    });
+
+    await creativeStrategy.save();
+
+    res.status(200).json({
+      success: true,
+      data: creativeStrategy
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Remove ad type from creative strategy
+// @route   DELETE /api/creatives/:projectId/ad-types/:typeKey
+// @access  Private
+exports.removeAdType = async (req, res, next) => {
+  try {
+    const { projectId, typeKey } = req.params;
+
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    const creativeStrategy = await CreativeStrategy.findOne({ projectId });
+
+    if (!creativeStrategy) {
+      return res.status(404).json({
+        success: false,
+        message: 'Creative strategy not found'
+      });
+    }
+
+    // Remove ad type
+    creativeStrategy.adTypes = creativeStrategy.adTypes.filter(
+      at => at.typeKey !== typeKey
+    );
+
+    // Re-order remaining ad types
+    creativeStrategy.adTypes.forEach((at, index) => {
+      at.order = index;
+    });
+
+    creativeStrategy.calculateTotal();
+    await creativeStrategy.save();
+
+    res.status(200).json({
+      success: true,
+      data: creativeStrategy
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update ad type details
+// @route   PUT /api/creatives/:projectId/ad-types/:typeKey
+// @access  Private
+exports.updateAdType = async (req, res, next) => {
+  try {
+    const { projectId, typeKey } = req.params;
+    const {
+      imageCreatives,
+      videoCreatives,
+      carouselCreatives,
+      messagingAngle,
+      hook,
+      headline,
+      cta,
+      platforms,
+      notes
+    } = req.body;
+
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    const creativeStrategy = await CreativeStrategy.findOne({ projectId });
+
+    if (!creativeStrategy) {
+      return res.status(404).json({
+        success: false,
+        message: 'Creative strategy not found'
+      });
+    }
+
+    // Find the ad type
+    const adTypeIndex = creativeStrategy.adTypes.findIndex(
+      at => at.typeKey === typeKey
+    );
+
+    if (adTypeIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ad type not found'
+      });
+    }
+
+    // Update creative details
+    const adType = creativeStrategy.adTypes[adTypeIndex];
+    if (!adType.creatives) {
+      adType.creatives = {};
+    }
+
+    if (imageCreatives !== undefined) adType.creatives.imageCreatives = imageCreatives;
+    if (videoCreatives !== undefined) adType.creatives.videoCreatives = videoCreatives;
+    if (carouselCreatives !== undefined) adType.creatives.carouselCreatives = carouselCreatives;
+    if (messagingAngle !== undefined) adType.creatives.messagingAngle = messagingAngle;
+    if (hook !== undefined) adType.creatives.hook = hook;
+    if (headline !== undefined) adType.creatives.headline = headline;
+    if (cta !== undefined) adType.creatives.cta = cta;
+    if (platforms !== undefined) adType.creatives.platforms = platforms;
+    if (notes !== undefined) adType.creatives.notes = notes;
+
+    creativeStrategy.calculateTotal();
+    await creativeStrategy.save();
+
+    res.status(200).json({
+      success: true,
+      data: creativeStrategy
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update additional notes
+// @route   PUT /api/creatives/:projectId/notes
+// @access  Private
+exports.updateAdditionalNotes = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { additionalNotes } = req.body;
+
+    const { project, error } = await checkProjectAccess(projectId, req.user);
+    if (error) {
+      return res.status(error.status).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    let creativeStrategy = await CreativeStrategy.findOne({ projectId });
+
+    if (!creativeStrategy) {
+      creativeStrategy = await CreativeStrategy.create({
+        projectId,
+        adTypes: [],
+        stages: [
+          { stage: 'awareness', creatives: [], totalCreatives: 0 },
+          { stage: 'consideration', creatives: [], totalCreatives: 0 },
+          { stage: 'conversion', creatives: [], totalCreatives: 0 }
+        ],
+        additionalNotes,
+        createdBy: req.user._id
+      });
+    } else {
+      creativeStrategy.additionalNotes = additionalNotes;
+      await creativeStrategy.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      data: creativeStrategy
     });
   } catch (error) {
     next(error);

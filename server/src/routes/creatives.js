@@ -6,7 +6,11 @@ const {
   addCreative,
   updateCreative,
   deleteCreative,
-  generateCreativeCards
+  generateCreativeCards,
+  addAdType,
+  removeAdType,
+  updateAdType,
+  updateAdditionalNotes
 } = require('../controllers/creativeController');
 const { protect } = require('../middleware/auth');
 
@@ -20,6 +24,14 @@ router.route('/:projectId')
 
 // Generate creative cards
 router.post('/:projectId/generate', generateCreativeCards);
+
+// Ad type routes
+router.post('/:projectId/ad-types', addAdType);
+router.put('/:projectId/ad-types/:typeKey', updateAdType);
+router.delete('/:projectId/ad-types/:typeKey', removeAdType);
+
+// Additional notes
+router.put('/:projectId/notes', updateAdditionalNotes);
 
 // Creative item routes
 router.post('/:projectId/stages/:stage/creatives', addCreative);

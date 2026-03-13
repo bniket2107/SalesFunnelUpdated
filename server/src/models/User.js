@@ -82,7 +82,4 @@ userSchema.statics.findActiveByRole = function(role) {
   return this.find({ role, isActive: true });
 };
 
-// Ensure unique index on email
-userSchema.index({ email: 1 }, { unique: true });
-
 module.exports = mongoose.model('User', userSchema);
