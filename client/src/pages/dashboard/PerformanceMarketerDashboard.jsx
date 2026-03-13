@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { projectService } from '@/services/api';
 import { Card, CardBody, Button, Badge, ProgressBar, Spinner } from '@/components/ui';
-import { toast } from 'sonner';
 import {
   FolderKanban,
   Search,
@@ -14,7 +15,6 @@ import {
   Play,
   ChevronRight,
   AlertCircle,
-  Info,
 } from 'lucide-react';
 import { formatDate, getStageName } from '@/lib/utils';
 
@@ -42,107 +42,10 @@ const STAGE_PATHS = {
   creativeStrategy: '/creative-strategy',
 };
 
-// Dummy data for showcase
-const DUMMY_PROJECTS = [
-  {
-    _id: 'demo-1',
-    projectName: 'TechStartup SaaS Launch',
-    businessName: 'TechStartup Inc.',
-    customerName: 'John Smith',
-    industry: 'Technology',
-    status: 'active',
-    isActive: true,
-    overallProgress: 65,
-    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    stages: {
-      onboarding: { isCompleted: true },
-      marketResearch: { isCompleted: true },
-      offerEngineering: { isCompleted: true },
-      trafficStrategy: { isCompleted: false, progress: 75 },
-      landingPage: { isCompleted: false, progress: 0 },
-      creativeStrategy: { isCompleted: false, progress: 0 },
-    },
-  },
-  {
-    _id: 'demo-2',
-    projectName: 'E-commerce Fashion Brand',
-    businessName: 'StyleHub',
-    customerName: 'Sarah Johnson',
-    industry: 'Fashion',
-    status: 'active',
-    isActive: true,
-    overallProgress: 40,
-    updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    stages: {
-      onboarding: { isCompleted: true },
-      marketResearch: { isCompleted: true },
-      offerEngineering: { isCompleted: false, progress: 50 },
-      trafficStrategy: { isCompleted: false, progress: 0 },
-      landingPage: { isCompleted: false, progress: 0 },
-      creativeStrategy: { isCompleted: false, progress: 0 },
-    },
-  },
-  {
-    _id: 'demo-3',
-    projectName: 'Fitness App Campaign',
-    businessName: 'FitLife Solutions',
-    customerName: 'Mike Davis',
-    industry: 'Health & Fitness',
-    status: 'active',
-    isActive: true,
-    overallProgress: 90,
-    updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    stages: {
-      onboarding: { isCompleted: true },
-      marketResearch: { isCompleted: true },
-      offerEngineering: { isCompleted: true },
-      trafficStrategy: { isCompleted: true },
-      landingPage: { isCompleted: true },
-      creativeStrategy: { isCompleted: false, progress: 50 },
-    },
-  },
-  {
-    _id: 'demo-4',
-    projectName: 'Real Estate Lead Gen',
-    businessName: 'PropertyPro',
-    customerName: 'Emily Brown',
-    industry: 'Real Estate',
-    status: 'paused',
-    isActive: false,
-    overallProgress: 25,
-    updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    stages: {
-      onboarding: { isCompleted: true },
-      marketResearch: { isCompleted: true },
-      offerEngineering: { isCompleted: false, progress: 25 },
-      trafficStrategy: { isCompleted: false, progress: 0 },
-      landingPage: { isCompleted: false, progress: 0 },
-      creativeStrategy: { isCompleted: false, progress: 0 },
-    },
-  },
-  {
-    _id: 'demo-5',
-    projectName: 'Online Course Platform',
-    businessName: 'LearnNow Academy',
-    customerName: 'David Wilson',
-    industry: 'Education',
-    status: 'completed',
-    isActive: false,
-    overallProgress: 100,
-    updatedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-    stages: {
-      onboarding: { isCompleted: true },
-      marketResearch: { isCompleted: true },
-      offerEngineering: { isCompleted: true },
-      trafficStrategy: { isCompleted: true },
-      landingPage: { isCompleted: true },
-      creativeStrategy: { isCompleted: true },
-    },
-  },
-];
-
 export default function PerformanceMarketerDashboard({ user }) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [projects, setProjects] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -152,25 +55,35 @@ export default function PerformanceMarketerDashboard({ user }) {
   });
 
   useEffect(() => {
-    // Load dummy data for showcase
-    setLoading(true);
+    fetchAssignedProjects();
+  }, []);
 
-    // Simulate a brief loading delay for realistic UX
-    const timer = setTimeout(() => {
-      setProjects(DUMMY_PROJECTS);
+  const fetchAssignedProjects = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch projects assigned to the current user
+      const response = await projectService.getProjects({ limit: 50 });
+      const assignedProjects = response.data || [];
+
+      setProjects(assignedProjects);
 
       // Calculate stats
-      const total = DUMMY_PROJECTS.length;
-      const active = DUMMY_PROJECTS.filter(p => p.isActive && p.status === 'active').length;
-      const completed = DUMMY_PROJECTS.filter(p => p.overallProgress === 100).length;
-      const inProgress = DUMMY_PROJECTS.filter(p => p.overallProgress > 0 && p.overallProgress < 100).length;
+      const total = assignedProjects.length;
+      const active = assignedProjects.filter(p => p.isActive && p.status === 'active').length;
+      const completed = assignedProjects.filter(p => p.overallProgress === 100).length;
+      const inProgress = assignedProjects.filter(p => p.overallProgress > 0 && p.overallProgress < 100).length;
 
       setStats({ total, active, completed, inProgress });
+    } catch (err) {
+      console.error('Failed to load projects:', err);
+      setError(err.response?.data?.message || 'Failed to load projects');
+      setProjects([]);
+    } finally {
       setLoading(false);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
+    }
+  };
 
   const getNextStage = (project) => {
     const stageKeys = ['onboarding', 'marketResearch', 'offerEngineering', 'trafficStrategy', 'landingPage', 'creativeStrategy'];
@@ -214,13 +127,6 @@ export default function PerformanceMarketerDashboard({ user }) {
     return { completed, total: 6 };
   };
 
-  // Demo mode click handler - shows toast instead of navigating
-  const handleDemoClick = (action) => {
-    toast.info(`${action} - Demo Mode`, {
-      description: 'This is a showcase demo. Full functionality requires a connected backend.',
-    });
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -229,19 +135,27 @@ export default function PerformanceMarketerDashboard({ user }) {
     );
   }
 
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <Card>
+          <CardBody className="py-12">
+            <div className="text-center">
+              <AlertCircle className="w-12 h-12 mx-auto text-red-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Projects</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <Button onClick={fetchAssignedProjects}>
+                Try Again
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Demo Mode Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
-        <Info className="w-5 h-5 text-blue-600 flex-shrink-0" />
-        <div>
-          <p className="font-medium text-blue-800">Demo Mode</p>
-          <p className="text-sm text-blue-600">
-            This dashboard shows sample data for demonstration purposes. Navigation is disabled in demo mode.
-          </p>
-        </div>
-      </div>
-
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -252,7 +166,7 @@ export default function PerformanceMarketerDashboard({ user }) {
             Here's an overview of your assigned projects and workflow stages.
           </p>
         </div>
-        <Button variant="secondary" onClick={() => handleDemoClick('View All Projects')}>
+        <Button variant="secondary" onClick={() => navigate('/projects')}>
           <FolderKanban className="w-4 h-4 mr-2" />
           View All Projects
         </Button>
@@ -327,7 +241,7 @@ export default function PerformanceMarketerDashboard({ user }) {
               <p className="text-gray-600 mb-4">
                 You haven't been assigned to any projects yet. Contact your administrator to get started.
               </p>
-              <Button variant="secondary" onClick={() => handleDemoClick('View All Projects')}>
+              <Button variant="secondary" onClick={() => navigate('/projects')}>
                 View All Projects
               </Button>
             </div>
@@ -371,7 +285,7 @@ export default function PerformanceMarketerDashboard({ user }) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDemoClick('View Project')}
+                            onClick={() => navigate(`/projects/${project._id}`)}
                           >
                             <ChevronRight className="w-5 h-5" />
                           </Button>
@@ -409,7 +323,9 @@ export default function PerformanceMarketerDashboard({ user }) {
                               </div>
                               <Button
                                 size="sm"
-                                onClick={() => handleDemoClick(`Continue to ${nextStage.name}`)}
+                                onClick={() =>
+                                  navigate(`${STAGE_PATHS[nextStage.key]}?projectId=${project._id}`)
+                                }
                               >
                                 Continue
                               </Button>
@@ -435,7 +351,7 @@ export default function PerformanceMarketerDashboard({ user }) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDemoClick('View Details')}
+                            onClick={() => navigate(`/projects/${project._id}`)}
                           >
                             View Details
                           </Button>
@@ -461,7 +377,7 @@ export default function PerformanceMarketerDashboard({ user }) {
                       <Card
                         key={project._id}
                         className="hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => handleDemoClick('View Project')}
+                        onClick={() => navigate(`/projects/${project._id}`)}
                       >
                         <CardBody className="p-4">
                           <div className="flex items-start justify-between mb-3">
@@ -511,13 +427,20 @@ export default function PerformanceMarketerDashboard({ user }) {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {Object.entries(STAGE_NAMES).map(([key, name]) => {
                   const Icon = STAGE_ICONS[key];
+                  const activeProject = projects.find(p => p.isActive && !p.stages?.[key]?.isCompleted);
 
                   return (
                     <Button
                       key={key}
                       variant="outline"
                       className="flex flex-col items-center gap-2 h-auto py-4"
-                      onClick={() => handleDemoClick(`Open ${name}`)}
+                      onClick={() => {
+                        if (activeProject) {
+                          navigate(`${STAGE_PATHS[key]}?projectId=${activeProject._id}`);
+                        } else {
+                          navigate(STAGE_PATHS[key]);
+                        }
+                      }}
                     >
                       <Icon className="w-5 h-5" />
                       <span className="text-sm">{name}</span>
