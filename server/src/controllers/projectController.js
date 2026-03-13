@@ -46,13 +46,17 @@ exports.getProjects = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, status, search } = req.query;
 
-    console.log('getProjects called by user:', req.user?._id, 'role:', req.user?.role);
+    console.log('=== getProjects DEBUG ===');
+    console.log('User ID:', req.user?._id?.toString());
+    console.log('User role:', req.user?.role);
+    console.log('User role type:', typeof req.user?.role);
 
     // Build query
     let query = {};
 
     // If not admin, show projects where user is assigned or created by them
     if (req.user.role !== 'admin') {
+      console.log('Building non-admin query...');
       query.$or = [
         { createdBy: req.user._id },
         { 'assignedTeam.performanceMarketer': req.user._id },
@@ -62,6 +66,8 @@ exports.getProjects = async (req, res, next) => {
         { 'assignedTeam.tester': req.user._id }
       ];
       console.log('Non-admin user query:', JSON.stringify(query, null, 2));
+    } else {
+      console.log('Admin user - showing all projects');
     }
 
     // Filter by status
@@ -99,7 +105,17 @@ exports.getProjects = async (req, res, next) => {
 
     const total = await Project.countDocuments(query);
 
+    console.log('=== QUERY RESULT ===');
+    console.log('Query used:', JSON.stringify(query, null, 2));
     console.log(`Found ${projects.length} projects for user ${req.user?._id}`);
+    console.log('Projects:', projects.map(p => ({
+      id: p._id?.toString(),
+      name: p.projectName,
+      createdBy: p.createdBy?._id?.toString(),
+      performanceMarketer: p.assignedTeam?.performanceMarketer?._id?.toString(),
+      uiUxDesigner: p.assignedTeam?.uiUxDesigner?._id?.toString()
+    })));
+    console.log('=== END DEBUG ===');
 
     // Add stage status to each project
     const projectsWithStatus = projects.map(project => ({
