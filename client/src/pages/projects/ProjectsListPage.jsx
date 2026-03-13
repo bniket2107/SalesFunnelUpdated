@@ -1,83 +1,30 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 import { Card, CardBody, CardHeader, Button, Badge, ProgressBar, Spinner, EmptyState } from '@/components/ui';
 import { FolderKanban, Plus, Search, Filter } from 'lucide-react';
 import { formatDate, getStageName, getStatusColor } from '@/lib/utils';
 
-// STATIC DATA MODE - Set to true for development, false for API calls
-const USE_STATIC_DATA = false;
-
-// Mock projects data
-const STATIC_PROJECTS = [
-  {
-    _id: 'static-project-1',
-    customerName: 'John Smith',
-    businessName: 'Acme Corporation',
-    email: 'john@acme.com',
-    mobile: '+1-555-0123',
-    currentStage: 2,
-    overallProgress: 16,
-    stages: {
-      onboarding: { isCompleted: true, completedAt: new Date() },
-      marketResearch: { isCompleted: false, completedAt: null },
-      offerEngineering: { isCompleted: false, completedAt: null },
-      trafficStrategy: { isCompleted: false, completedAt: null },
-      landingPage: { isCompleted: false, completedAt: null },
-      creativeStrategy: { isCompleted: false, completedAt: null }
-    },
-    status: 'active',
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date()
-  },
-  {
-    _id: 'static-project-2',
-    customerName: 'Sarah Johnson',
-    businessName: 'TechStart Inc',
-    email: 'sarah@techstart.com',
-    mobile: '+1-555-0456',
-    currentStage: 4,
-    overallProgress: 50,
-    stages: {
-      onboarding: { isCompleted: true, completedAt: new Date() },
-      marketResearch: { isCompleted: true, completedAt: new Date() },
-      offerEngineering: { isCompleted: true, completedAt: new Date() },
-      trafficStrategy: { isCompleted: false, completedAt: null },
-      landingPage: { isCompleted: false, completedAt: null },
-      creativeStrategy: { isCompleted: false, completedAt: null }
-    },
-    status: 'active',
-    createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date()
-  },
-  {
-    _id: 'static-project-3',
-    customerName: 'Michael Brown',
-    businessName: 'Global Marketing Co',
-    email: 'michael@globalmarketing.com',
-    mobile: '+1-555-0789',
-    currentStage: 6,
-    overallProgress: 100,
-    stages: {
-      onboarding: { isCompleted: true, completedAt: new Date() },
-      marketResearch: { isCompleted: true, completedAt: new Date() },
-      offerEngineering: { isCompleted: true, completedAt: new Date() },
-      trafficStrategy: { isCompleted: true, completedAt: new Date() },
-      landingPage: { isCompleted: true, completedAt: new Date() },
-      creativeStrategy: { isCompleted: true, completedAt: new Date() }
-    },
-    status: 'completed',
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date()
-  }
-];
+// Role labels for display
+const roleLabels = {
+  admin: 'Admin',
+  performance_marketer: 'Performance Marketer',
+  ui_ux_designer: 'UI/UX Designer',
+  graphic_designer: 'Graphic Designer',
+  developer: 'Developer',
+  tester: 'Tester',
+};
 
 export default function ProjectsListPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     fetchProjects();
@@ -86,30 +33,9 @@ export default function ProjectsListPage() {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-
-      if (USE_STATIC_DATA) {
-        // Use static data for development
-        await new Promise(resolve => setTimeout(resolve, 300));
-        let filteredProjects = STATIC_PROJECTS;
-
-        if (status) {
-          filteredProjects = filteredProjects.filter(p => p.status === status);
-        }
-
-        if (search) {
-          filteredProjects = filteredProjects.filter(p =>
-            p.businessName.toLowerCase().includes(search.toLowerCase()) ||
-            p.customerName.toLowerCase().includes(search.toLowerCase())
-          );
-        }
-
-        setProjects(filteredProjects);
-      } else {
-        // Real API calls
-        const { projectService } = await import('@/services/api');
-        const response = await projectService.getProjects({ status, search });
-        setProjects(response.data);
-      }
+      const { projectService } = await import('@/services/api');
+      const response = await projectService.getProjects({ status, search });
+      setProjects(response.data);
     } catch (error) {
       toast.error('Failed to load projects');
     } finally {
@@ -135,15 +61,22 @@ export default function ProjectsListPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isAdmin ? 'Projects' : 'My Projects'}
+          </h1>
           <p className="text-gray-600 mt-1">
-            Manage your client projects and track progress.
+            {isAdmin
+              ? 'Manage all client projects and assign teams.'
+              : 'View and work on your assigned projects.'}
           </p>
         </div>
-        <Button onClick={() => navigate('/projects/new')}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Project
-        </Button>
+        {/* Only Admin can create new projects */}
+        {isAdmin && (
+          <Button onClick={() => navigate('/projects/new')}>
+            <Plus className="w-4 h-4 mr-2" />
+            New Project
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -185,13 +118,19 @@ export default function ProjectsListPage() {
           <CardBody className="py-12">
             <EmptyState
               icon={FolderKanban}
-              title="No projects found"
-              description="Get started by creating your first project."
+              title={isAdmin ? "No projects found" : "No assigned projects"}
+              description={
+                isAdmin
+                  ? "Get started by creating your first project."
+                  : "You haven't been assigned to any projects yet. Contact your administrator."
+              }
               action={
-                <Button onClick={() => navigate('/projects/new')}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Project
-                </Button>
+                isAdmin && (
+                  <Button onClick={() => navigate('/projects/new')}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Project
+                  </Button>
+                )
               }
             />
           </CardBody>
@@ -208,9 +147,14 @@ export default function ProjectsListPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {project.businessName}
+                      {project.projectName || project.businessName}
                     </h3>
                     <p className="text-sm text-gray-500">{project.customerName}</p>
+                    {project.industry && (
+                      <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+                        {project.industry}
+                      </span>
+                    )}
                   </div>
                   <Badge variant={project.status === 'active' ? 'success' : 'default'}>
                     {project.status}
@@ -237,6 +181,40 @@ export default function ProjectsListPage() {
                       {getStageName(project.stages ? Object.keys(project.stages)[project.currentStage - 1] : 'onboarding')}
                     </span>
                   </div>
+
+                  {/* Show team for admin */}
+                  {isAdmin && project.assignedTeam && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Team</span>
+                      <div className="flex -space-x-2">
+                        {project.assignedTeam.performanceMarketer && (
+                          <div className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">
+                            {project.assignedTeam.performanceMarketer.name?.charAt(0)}
+                          </div>
+                        )}
+                        {project.assignedTeam.uiUxDesigner && (
+                          <div className="w-6 h-6 rounded-full bg-purple-500 text-white text-xs flex items-center justify-center">
+                            {project.assignedTeam.uiUxDesigner.name?.charAt(0)}
+                          </div>
+                        )}
+                        {project.assignedTeam.graphicDesigner && (
+                          <div className="w-6 h-6 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center">
+                            {project.assignedTeam.graphicDesigner.name?.charAt(0)}
+                          </div>
+                        )}
+                        {project.assignedTeam.developer && (
+                          <div className="w-6 h-6 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">
+                            {project.assignedTeam.developer.name?.charAt(0)}
+                          </div>
+                        )}
+                        {project.assignedTeam.tester && (
+                          <div className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center">
+                            {project.assignedTeam.tester.name?.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Last Updated</span>

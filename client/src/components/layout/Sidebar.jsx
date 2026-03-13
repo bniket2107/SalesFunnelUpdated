@@ -16,39 +16,48 @@ import {
   ChevronRight,
   LogOut,
   User,
-  Bell,
-  MessageSquare,
-  CheckSquare,
   Users,
+  CheckSquare,
 } from 'lucide-react';
 
-const baseNavigation = [
+// Navigation items for Admin - Only Dashboard, Projects (list only), Team Management, Settings
+const adminNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { name: 'Projects', href: '/projects', icon: FolderKanban },
+  { name: 'Projects', href: '/projects', icon: FolderKanban, listOnly: true },
+  { name: 'Team Management', href: '/team', icon: Users },
+  { name: 'Settings', href: '/settings', icon: Settings },
+];
+
+// Navigation items for Performance Marketer and other team roles
+const teamNavigation = [
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'My Projects', href: '/projects', icon: FolderKanban },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Market Research', href: '/market-research', icon: Search },
   { name: 'Offer Engineering', href: '/offer-engineering', icon: Gift },
   { name: 'Traffic Strategy', href: '/traffic-strategy', icon: TrendingUp },
   { name: 'Landing Pages', href: '/landing-pages', icon: FileText },
   { name: 'Creative Strategy', href: '/creative-strategy', icon: Lightbulb },
-  { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
-// Admin-only navigation items
-const adminNavigation = [
-  { name: 'Team Management', href: '/team', icon: Users },
-];
+// Role labels for display
+const roleLabels = {
+  admin: 'Admin',
+  performance_marketer: 'Performance Marketer',
+  ui_ux_designer: 'UI/UX Designer',
+  graphic_designer: 'Graphic Designer',
+  developer: 'Developer',
+  tester: 'Tester',
+};
 
 export default function Sidebar({ collapsed, setCollapsed }) {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  // Combine navigation based on role
-  const navigation = user?.role === 'admin'
-    ? [...baseNavigation.slice(0, 3), ...adminNavigation, ...baseNavigation.slice(3)]
-    : baseNavigation;
+  // Select navigation based on role
+  const isAdmin = user?.role === 'admin';
+  const navigation = isAdmin ? adminNavigation : teamNavigation;
 
   return (
     <aside
@@ -134,7 +143,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
                 {user?.name || 'User'}
               </p>
               <p className="text-xs text-gray-500 truncate">
-                {user?.email || ''}
+                {roleLabels[user?.role] || user?.role}
               </p>
             </div>
             <button

@@ -72,6 +72,30 @@ function AdminRoute({ children }) {
   return children;
 }
 
+// Team Route wrapper (NOT admin - for performance marketers, designers, developers, testers)
+function TeamRoute({ children }) {
+  const { isAuthenticated, loading, user } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Admin cannot access strategy stages
+  if (user?.role === 'admin') {
+    return <Navigate to="/projects" replace />;
+  }
+
+  return children;
+}
+
 // Public Route wrapper (redirect if authenticated)
 function PublicRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -131,23 +155,59 @@ function AppRoutes() {
 
         {/* Projects */}
         <Route path="/projects" element={<ProjectsListPage />} />
-        <Route path="/projects/new" element={<CreateProjectPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
 
-        {/* Market Research */}
-        <Route path="/market-research" element={<MarketResearchPage />} />
+        {/* Create Project - Admin only */}
+        <Route
+          path="/projects/new"
+          element={
+            <AdminRoute>
+              <CreateProjectPage />
+            </AdminRoute>
+          }
+        />
 
-        {/* Offer Engineering */}
-        <Route path="/offer-engineering" element={<OfferEngineeringPage />} />
-
-        {/* Traffic Strategy */}
-        <Route path="/traffic-strategy" element={<TrafficStrategyPage />} />
-
-        {/* Landing Pages */}
-        <Route path="/landing-pages" element={<LandingPageStrategyPage />} />
-
-        {/* Creative Strategy */}
-        <Route path="/creative-strategy" element={<CreativeStrategyPage />} />
+        {/* Stage routes - NOT accessible by admin (team members only) */}
+        <Route
+          path="/market-research"
+          element={
+            <TeamRoute>
+              <MarketResearchPage />
+            </TeamRoute>
+          }
+        />
+        <Route
+          path="/offer-engineering"
+          element={
+            <TeamRoute>
+              <OfferEngineeringPage />
+            </TeamRoute>
+          }
+        />
+        <Route
+          path="/traffic-strategy"
+          element={
+            <TeamRoute>
+              <TrafficStrategyPage />
+            </TeamRoute>
+          }
+        />
+        <Route
+          path="/landing-pages"
+          element={
+            <TeamRoute>
+              <LandingPageStrategyPage />
+            </TeamRoute>
+          }
+        />
+        <Route
+          path="/creative-strategy"
+          element={
+            <TeamRoute>
+              <CreativeStrategyPage />
+            </TeamRoute>
+          }
+        />
 
         {/* Tasks */}
         <Route path="/tasks" element={<TasksPage />} />

@@ -9,16 +9,16 @@ import { Card, CardBody, CardHeader, Button, Input } from '@/components/ui';
 import { ArrowLeft } from 'lucide-react';
 
 const projectSchema = z.object({
-  projectName: z.string().min(2, 'Project name must be at least 2 characters').optional(),
+  projectName: z.string().min(2, 'Project name must be at least 2 characters').optional().or(z.literal('')),
   customerName: z.string().min(2, 'Customer name must be at least 2 characters'),
   businessName: z.string().min(2, 'Business name must be at least 2 characters'),
   mobile: z.string().min(10, 'Please enter a valid mobile number'),
   email: z.string().email('Please enter a valid email'),
-  industry: z.string().optional(),
-  description: z.string().optional(),
-  budget: z.number().min(0).optional(),
-  timelineStartDate: z.string().optional(),
-  timelineEndDate: z.string().optional(),
+  industry: z.string().optional().or(z.literal('')),
+  description: z.string().optional().or(z.literal('')),
+  budget: z.string().optional().or(z.literal('')),
+  timelineStartDate: z.string().optional().or(z.literal('')),
+  timelineEndDate: z.string().optional().or(z.literal('')),
 });
 
 export default function CreateProjectPage() {
