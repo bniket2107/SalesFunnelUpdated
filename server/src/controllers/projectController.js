@@ -46,6 +46,8 @@ exports.getProjects = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, status, search } = req.query;
 
+    console.log('getProjects called by user:', req.user?._id, 'role:', req.user?.role);
+
     // Build query
     let query = {};
 
@@ -59,6 +61,7 @@ exports.getProjects = async (req, res, next) => {
         { 'assignedTeam.developer': req.user._id },
         { 'assignedTeam.tester': req.user._id }
       ];
+      console.log('Non-admin user query:', JSON.stringify(query, null, 2));
     }
 
     // Filter by status
@@ -95,6 +98,8 @@ exports.getProjects = async (req, res, next) => {
       .limit(parseInt(limit));
 
     const total = await Project.countDocuments(query);
+
+    console.log(`Found ${projects.length} projects for user ${req.user?._id}`);
 
     // Add stage status to each project
     const projectsWithStatus = projects.map(project => ({

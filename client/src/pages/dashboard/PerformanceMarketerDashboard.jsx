@@ -64,8 +64,15 @@ export default function PerformanceMarketerDashboard({ user }) {
       setError(null);
 
       // Fetch projects assigned to the current user
+      console.log('Current user:', user);
+      console.log('Fetching projects for user role:', user?.role);
+
       const response = await projectService.getProjects({ limit: 50 });
+      console.log('Projects API response:', response);
+
       const assignedProjects = response.data || [];
+      console.log('Assigned projects:', assignedProjects);
+      console.log('Number of projects:', assignedProjects.length);
 
       setProjects(assignedProjects);
 
@@ -74,6 +81,8 @@ export default function PerformanceMarketerDashboard({ user }) {
       const active = assignedProjects.filter(p => p.isActive && p.status === 'active').length;
       const completed = assignedProjects.filter(p => p.overallProgress === 100).length;
       const inProgress = assignedProjects.filter(p => p.overallProgress > 0 && p.overallProgress < 100).length;
+
+      console.log('Stats:', { total, active, completed, inProgress });
 
       setStats({ total, active, completed, inProgress });
     } catch (err) {
